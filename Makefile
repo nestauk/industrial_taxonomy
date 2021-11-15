@@ -38,7 +38,7 @@ test-setup:
 
 .PHONY: init
 ## Fully initialise a project: install; setup github repo; setup S3 bucket
-init:  install .cookiecutter/state/setup-bucket .cookiecutter/state/setup-github
+init:  install .cookiecutter/state/setup-github
 	@echo SETUP COMPLETE
 
 .PHONY: install
