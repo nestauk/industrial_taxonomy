@@ -1,6 +1,7 @@
 """Fetch GDP data"""
 
 from typing import Dict, List, Union
+import pandas as pd
 
 from metaflow import FlowSpec, project, step
 
@@ -10,8 +11,6 @@ URL = (
     "regionalgrossdomesticproductlocalauthorities.xlsx",
 )
 
-# type aliases
-
 
 @project(name="industrial_taxonomy")
 class LocalGdpData(FlowSpec):
@@ -19,14 +18,17 @@ class LocalGdpData(FlowSpec):
 
     Attributes:
         url: location of the original file
-        sheets: excel sheets to parse in the source file
         pop_clean: population table
         gva_clean: GVA table
+        gva: gva dict
+        pop: pop dict
     """
 
     url: str
-    sheets: list
-    # table_raw: Dict()
+    gva_clean: pd.DataFrame
+    pop_clean: pd.DataFrame
+    pop: List[Dict[str, Union[str, float]]]
+    gva: List[Dict[str, Union[str, float]]]
 
     @step
     def start(self):
