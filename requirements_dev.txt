@@ -2,9 +2,10 @@ ipykernel
 jupytext
 flake8
 flake8-black
-flake8-import-order
 flake8-bandit
 flake8-bugbear
+darglint
+pep8-naming
 black
 Sphinx
 sphinxcontrib-napoleon

@@ -47,7 +47,7 @@ repos:
       #   entry: flake8
       #   language: system
       #   types: [python]
-      #   args: ["--config=.flake8"]
+      #   args: ["--config=setup.cfg"]
       #   require_serial: true
       - id: no-commit-to-branch
         name: Prevent commits to dev / master
