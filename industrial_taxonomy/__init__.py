@@ -4,7 +4,11 @@ import logging.config
 from pathlib import Path
 from typing import Optional
 
+from metaflow import namespace
+
 import yaml
+
+namespace("project:industrial_taxonomy")
 
 
 def get_yaml_config(file_path: Path) -> Optional[dict]:
