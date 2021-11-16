@@ -18,6 +18,4 @@ def excel_to_df(content: bytes, sheets: int, skiprows: int):
         sheets: sheet number to keep
         skipwrows: rows to skip
     """
-    return pd.read_excel(content, skiprows=skiprows, sheet_name=sheets).dropna(
-        axis=0, subset=["LA code"]  # We are dropping bottom rows without a LA code
-    )
+    return pd.read_excel(content, skiprows=skiprows, sheet_name=sheets)
