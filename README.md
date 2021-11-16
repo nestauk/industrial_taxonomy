@@ -10,6 +10,12 @@
   - Configure pre-commit
   - Configure metaflow to use AWS
 
+## Features
+
+### Collect data
+
+Run `python industrial_taxonomy/pipeline/sic/flow.py --production run` to create the SIC code - name lookups
+
 ## Contributor guidelines
 
 [Technical and working style guidelines](https://github.com/nestauk/ds-cookiecutter/blob/master/GUIDELINES.md)
