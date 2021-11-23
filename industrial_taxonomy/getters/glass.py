@@ -6,11 +6,13 @@ import pandas as pd
 from metaflow import Run
 from metaflow.client.core import MetaflowData
 
-import industrial_taxonomy
+from industrial_taxonomy import config
 from industrial_taxonomy.utils.metaflow import namespace_context
 
 
-RUN_ID = industrial_taxonomy.config["flows"]["glass"]["run_id"]
+if config is None:
+    raise FileNotFoundError("Could not find config file.")
+RUN_ID = config["flows"]["glass"]["run_id"]  # type: ignore
 
 
 @lru_cache()
