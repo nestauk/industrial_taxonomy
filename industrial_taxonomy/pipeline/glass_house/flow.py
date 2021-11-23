@@ -1,7 +1,6 @@
-from typing import List, TypedDict
+from typing import List
 
 from metaflow import (
-    batch,
     conda_base,
     current,
     FlowSpec,
@@ -15,23 +14,15 @@ from metaflow import (
 )
 from metaflow.datatools.s3 import MetaflowS3NotFound
 
+from industrial_taxonomy.getters.glass_house import FullMatchResult
+
 try:  # Hack for type-hints on attributes
     from pandas import DataFrame
 except ImportError:
     pass
 
 
-class FullMatchResult(TypedDict):
-    sim_mean: int  # Mean similarity between names
-    # Glass
-    org_id: int
-    org_name: str
-    # Companies House
-    company_number: str
-    company_name: str
-
-
-@conda_base(python="3.9")  # Need >=3.8 on Batch for TypedDict
+@conda_base(python="3.9")  # Need >=3.8 on Batch for TypedDict of FullMatchResult
 @project(name="industrial_taxonomy")
 class JacchammerFlow(FlowSpec):
     """Fuzzy match Companies House and Glass AI names using Jacchammer.
