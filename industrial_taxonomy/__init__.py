@@ -16,6 +16,7 @@ def get_yaml_config(file_path: Path) -> Optional[dict]:
     if file_path.exists():
         with open(file_path, "rt") as f:
             return yaml.load(f.read(), Loader=yaml.FullLoader)
+    return None
 
 
 # Define project base directory
