@@ -10,5 +10,5 @@ typer
 sh
 xlrd
 openpyxl
-metaflow_extensions@git+https://github.com/nestauk/metaflow_extensions@16_pip_step_deco
+metaflow_extensions@git+https://github.com/nestauk/metaflow_extensions@25_fix_project_env
 pyyaml
