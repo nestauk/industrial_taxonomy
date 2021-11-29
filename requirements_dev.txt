@@ -1,0 +1,16 @@
+ipykernel
+jupytext
+flake8
+flake8-black
+flake8-bandit
+flake8-bugbear
+darglint
+pep8-naming
+black
+Sphinx
+sphinxcontrib-napoleon
+sphinx-rtd-theme
+awscli
+pytest
+pre-commit
+pre-commit-hooks
