@@ -10,6 +10,12 @@
   - Configure pre-commit
   - Configure metaflow to use AWS
 
+## Features
+
+### Pipeline
+
+Read instructions to reproduce the pipeline in `industrial_taxonomy/pipeline/README.md`.
+
 ## Contributor guidelines
 
 [Technical and working style guidelines](https://github.com/nestauk/ds-cookiecutter/blob/master/GUIDELINES.md)
