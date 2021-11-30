@@ -6,6 +6,7 @@ from metaflow import Flow, Run
 from metaflow.exception import MetaflowNotFound
 
 from industrial_taxonomy import config
+from industrial_taxonomy.utils.metaflow import get_run as get_run_util
 
 
 if config is None:
@@ -64,3 +65,9 @@ def glass_companies_house_matches(
     run = run or get_run()
 
     return run.data.full_top_matches
+
+
+def get_description_tokens(run: Optional[Run] = None) -> Dict[str, List[str]]:
+    """Processed Glass description tokens for which a Companies House match exists."""
+    run = run or get_run_util("GlassNlpFlow")
+    return run.data.documents
