@@ -23,10 +23,12 @@ class PopEstimateData(FlowSpec):
     @step
     def start(self):
         """Fetch population data from the ONS"""
-        from industrial_taxonomy.pipeline.official.utils import get, excel_to_df
+
+        import pandas as pd
+        from industrial_taxonomy.pipeline.official.utils import get
 
         self.url = "".join(URL)
-        self._raw_pop_test = excel_to_df(get(self.url), sheets=6, skiprows=7)
+        self._raw_pop_test = pd.read_excel(get(self.url), sheet_name=6, skiprows=7)
 
         self.next(self.transform)
 
