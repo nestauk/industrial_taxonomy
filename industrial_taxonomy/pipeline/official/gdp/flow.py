@@ -11,7 +11,7 @@ GDP_URL = (
     "regionalgrossdomesticproductlocalauthorities.xlsx"
 )
 # Excel spreadsheets with the data we are interested in
-SHEETS = [7, 8]
+SHEETS = [6, 7]
 
 
 @project(name="industrial_taxonomy")
@@ -41,7 +41,7 @@ class LocalGdpData(FlowSpec):
         gdp_table = get(self.url)
 
         # Create dfs for the sheets with relevant information (population and GVA)
-        self._pop_raw, self._gva_raw = [
+        self._gva_raw, self._pop_raw = [
             pd.read_excel(gdp_table, sheet_name=sh, skiprows=1) for sh in SHEETS
         ]
 
@@ -53,7 +53,7 @@ class LocalGdpData(FlowSpec):
         from utils import process_gdp_table
 
         self.pop_clean = process_gdp_table(self._pop_raw)
-        self.gva_clean = process_gdp_table(self._pop_raw)
+        self.gva_clean = process_gdp_table(self._gva_raw)
 
         self.next(self.end)
 
