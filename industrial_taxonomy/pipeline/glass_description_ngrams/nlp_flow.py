@@ -1,17 +1,4 @@
-"""Tokenises and ngrams documents.
-
-- Run documents through a spacy pipeline
-  (large english model with entity merging)
-- Convert to bag of words
-  (using either lemmatisation or by remapping certain entities to a common token
-   - configured by `entity_mappings` param)
-- Filter low frequency words
-  (note: purely done for computational efficiency to avoid explosion of n-grams)
-- Generate n-grams using statistical co-occurrence (gensim)
-- Filter low and high frequency n-grams
-- Filter very short n-grams or bi-grams that are purely stop words
-"""
-from typing import Generator
+from typing import Dict, Generator, List
 
 from metaflow import current, FlowSpec, step, Parameter, project, JSONType, conda_base
 
@@ -27,6 +14,30 @@ from metaflow import current, FlowSpec, step, Parameter, project, JSONType, cond
 )
 @project(name="industrial_taxonomy")
 class GlassNlpFlow(FlowSpec):
+    """Process Glass descriptions into n-grammed tokens.
+
+    Steps:
+    - Run documents through a spacy pipeline
+      (large english model with entity merging)
+    - Convert to bag of words
+      (using either lemmatisation or by remapping certain entities to a common
+      token configured by `entity_mappings` param)
+    - Filter low frequency words
+      (note: purely done for computational efficiency to avoid explosion of n-grams)
+    - Generate n-grams using statistical co-occurrence (gensim)
+    - Filter low and high frequency n-grams
+    - Filter very short n-grams or bi-grams that are purely stop words
+
+    Attributes:
+        keys: Document identifiers
+        raw_documents: Raw document descriptions [MUTATES]
+        documents: Processed document descriptions
+    """
+
+    keys: List[str]
+    raw_documents: List[str]
+    documents: Dict[str, List[str]]
+
     n_process = Parameter(
         "n-process",
         help="The number of processes to use with spacy (default: 1)",
@@ -88,13 +99,11 @@ class GlassNlpFlow(FlowSpec):
         import toolz.curried as t
         from nlp_utils import spacy_pipeline, ngram_pipeline, spacy_to_tokens
 
-        spacyify = t.curry(spacy_pipeline().pipe, n_process=self.n_process)
-
         tokens = t.pipe(
             self.pop_documents(),
             # TODO Step: Remove HTML ?
             # Step: Spacy
-            spacyify,
+            lambda docs: spacy_pipeline().pipe(docs, n_process=self.n_process),
             # Step: Spacy -> (ordered) Bag of words
             t.map(spacy_to_tokens(entity_mappings=None)),
             # Step: construct n-grams
@@ -112,6 +121,7 @@ class GlassNlpFlow(FlowSpec):
 
     @step
     def end(self):
+        """No-op."""
         pass
 
 

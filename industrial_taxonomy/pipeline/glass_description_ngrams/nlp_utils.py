@@ -1,4 +1,3 @@
-"""Core NLP pipeline functionality for `nlp_flow.EscoeNlpFlow`."""
 from itertools import product
 from typing import Any, Dict, Iterable, List, Optional, Set
 
