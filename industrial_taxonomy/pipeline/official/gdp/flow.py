@@ -33,14 +33,14 @@ class LocalGdpData(FlowSpec):
     @step
     def start(self):
         """Fetch the GDP data from the ONS"""
-        from industrial_taxonomy.pipeline.official.utils import get, excel_to_df
+        from industrial_taxonomy.pipeline.official.utils import get
 
         self.url = "".join(URL)
         gdp_table = get(self.url)
 
         # Create dfs for the sheets with relevant information (population and GVA)
         self._pop_raw, self._gva_raw = [
-            excel_to_df(gdp_table, sheets=sh, skiprows=1) for sh in [7, 8]
+            pd.read_excel(gdp_table, sheet_name=sh, skiprows=1) for sh in [7, 8]
         ]
 
         self.next(self.transform)
