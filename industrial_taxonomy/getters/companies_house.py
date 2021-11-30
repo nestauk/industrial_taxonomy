@@ -2,7 +2,7 @@
 from functools import lru_cache
 from typing import Optional
 
-import pandas as pd
+from pandas import DataFrame, Series, to_datetime
 from metaflow import Run
 from metaflow.client.core import MetaflowData
 
@@ -32,26 +32,83 @@ def _get_run_data() -> MetaflowData:
         return _get_run().data
 
 
-def get_organisation(run: Optional[Run] = None) -> pd.DataFrame:
+def get_organisation(run: Optional[Run] = None) -> DataFrame:
+    """Get primary organisation data for each Company.
+
+    Args:
+        run: Run of `CompaniesHouseMergeDumpFlow`
+
+    Returns:
+        Index:
+            Company Number
+        Columns:
+            Name: category, dtype: str, Company category, e.g. PLC
+            Name: status, dtype: str, Company status, e.g. Active, Liquidation etc.
+            Name: country_of_origin, dtype: str, Country of Origin
+            Name: dissolution_date, dtype: datetime64, Date (if any) company dissolved
+            Name: incorporation_date, dtype: datetime64, Date company incorporated
+    """
     run_data = run.data if run else _get_run_data()
-    return run_data.organisation
+    return (
+        run_data.organisation.astype(
+            {"company_number": str, "status": str, "category": str}
+        )
+        .assign(
+            dissolution_date=lambda df: df.dissolution_date.pipe(_parse_date),
+            incorporation_date=lambda df: df.incorporation_date.pipe(_parse_date),
+        )
+        .drop("uri", axis=1)
+        .set_index("company_number")
+    )
 
 
-def get_address(run: Optional[Run] = None) -> pd.DataFrame:
-    run_data = run.data if run else _get_run_data()
-    return run_data.address
+def get_sector(run: Optional[Run] = None) -> DataFrame:
+    """Get sector rankings for each Company.
 
+    Args:
+        run: Run of `CompaniesHouseMergeDumpFlow`
 
-def get_sector(run: Optional[Run] = None) -> pd.DataFrame:
-    """Returns most up-to-date sector rankings."""
+    Returns:
+        Index:
+            Company Number
+        Columns:
+            Name: SIC5_code, dtype: str, 5-digit SIC code
+            Name: rank, dtype: int, Rank of sector (lower number => more likely)
+    """
     run_data = run.data if run else _get_run_data()
     return (
         run_data.organisationsector.sort_values("date")
         .drop_duplicates(["company_number", "rank"], keep="last")
-        .rename(columns={"date": "data_dump_date", "sector_id": "SIC5_code"})
+        .rename(columns={"sector_id": "SIC5_code"})
+        .drop("date", 1)
+        .astype({"company_number": str, "rank": int, "SIC5_code": int})
+        .set_index("company_number")
     )
 
 
-def get_name(run: Optional[Run] = None) -> pd.DataFrame:
+def get_name(run: Optional[Run] = None) -> DataFrame:
+    """Get name history of Companies.
+
+    Args:
+        run: Run of `CompaniesHouseMergeDumpFlow`
+
+    Returns:
+        Index:
+            Company Number
+        Columns:
+            Name: name_age_index, dtype: int, How many renames ago name was current
+            Name: name, dtype: str, Company Name
+            Name: invalid_date, dtype: datetime64, When name changed (NaT => current)
+    """
     run_data = run.data if run else _get_run_data()
-    return run_data.organisationname
+    return (
+        run_data.organisationname.assign(
+            invalid_date=lambda df: _parse_date(df.invalid_date)
+        )
+        .astype({"company_number": str, "name_age_index": int, "name": "str"})
+        .set_index("company_number")
+    )
+
+
+def _parse_date(series: Series) -> Series:
+    return to_datetime(series, errors="coerce", dayfirst=True)
