@@ -1,5 +1,7 @@
 # Steps in data pipeline
 
+:warning: When testing omit the `--production` flag from flow commands
+
 ## 1. Collect data
 
 ### Official data
@@ -11,3 +13,14 @@ Run `python industrial_taxonomy/pipeline/official/population/flow.py --productio
 Run `python industrial_taxonomy/pipeline/official/gdp/flow.py --production run` to collect GDP data
 
 Run `python industrial_taxonomy/pipeline/official/nomis/flow.py --production run` to collect Nomis data
+
+## 2. Fuzzy-match Glass organisations to Companies House companies
+
+```bash
+python industrial_taxonomy/pipeline/glass_house/flow.py \
+ --environment=conda \
+ --production \
+ run \
+ --clean-names true \
+ --with batch
+```
