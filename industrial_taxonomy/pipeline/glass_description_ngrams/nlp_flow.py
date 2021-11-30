@@ -11,13 +11,9 @@
 - Filter low and high frequency n-grams
 - Filter very short n-grams or bi-grams that are purely stop words
 """
-import json
 from typing import Generator
 
-import toolz.curried as t
-from metaflow import FlowSpec, step, Parameter, IncludeFile, JSONType, conda_base
-
-from nlp_utils import spacy_pipeline, ngram_pipeline, spacy_to_tokens
+from metaflow import current, FlowSpec, step, Parameter, project, JSONType, conda_base
 
 
 @conda_base(
@@ -29,7 +25,8 @@ from nlp_utils import spacy_pipeline, ngram_pipeline, spacy_to_tokens
     },
     python="3.8",
 )
-class EscoeNlpFlow(FlowSpec):
+@project(name="industrial_taxoonomy")
+class GlassNlpFlow(FlowSpec):
     n_process = Parameter(
         "n-process",
         help="The number of processes to use with spacy (default: 1)",
@@ -49,29 +46,47 @@ class EscoeNlpFlow(FlowSpec):
         type=JSONType,
         default=None,
     )
-    input_file = IncludeFile(
-        "input-file",
-        help="JSON file, mapping document id to document text."
-        " Structure: Dict[str: str]",
+    test_mode = Parameter(
+        "test-mode",
+        help="Whether to run in test mode (on a small subset of data)",
+        type=bool,
+        default=lambda _: not current.is_production,
     )
 
     def pop_documents(self) -> Generator[str, None, None]:
         """Destructively yield from `self.documents`."""
-        self.documents.reverse()
-        n = len(self.documents)
+        self.raw_documents.reverse()
+        n = len(self.raw_documents)
         i = 0
         while i < n:
-            yield self.documents.pop()
+            yield self.raw_documents.pop()
             i += 1
 
     @step
     def start(self):
-        """Load data and run the NLP pipeline, returning tokenised documents."""
+        """Load data."""
+        from industrial_taxonomy.getters.glass import get_organisation_description
+        from industrial_taxonomy.getters.glass_house import glass_companies_house_lookup
 
-        data = json.loads(self.input_file)
-        self.documents = list(data.values())
+        matched_glass_org_ids = glass_companies_house_lookup().keys()
+        nrows = 1_000 if self.test_mode and not current.is_production else None
+        data = (
+            get_organisation_description()
+            .loc[lambda x: x.index.isin(matched_glass_org_ids), "description"]
+            .head(nrows)
+            .to_dict()
+        )
+        self.raw_documents = list(data.values())
         self.keys = list(data.keys())
         print(f"Received {len(data)} documents")
+
+        self.next(self.process)
+
+    @step
+    def process(self):
+        """Run the NLP pipeline, returning tokenised documents."""
+        import toolz.curried as t
+        from nlp_utils import spacy_pipeline, ngram_pipeline, spacy_to_tokens
 
         spacyify = t.curry(spacy_pipeline().pipe, n_process=self.n_process)
 
@@ -89,7 +104,6 @@ class EscoeNlpFlow(FlowSpec):
 
         self.documents = dict(zip(self.keys, tokens))
         print(f"Processed {len(self.documents)} documents")
-        print(len(self.documents), len(self.keys))
         assert len(self.documents) == len(self.keys), (
             "Number of document ID's and processed documents does not match... "
             f"{len(self.keys)} != {len(self.documents)}"
@@ -102,4 +116,4 @@ class EscoeNlpFlow(FlowSpec):
 
 
 if __name__ == "__main__":
-    EscoeNlpFlow()
+    GlassNlpFlow()
