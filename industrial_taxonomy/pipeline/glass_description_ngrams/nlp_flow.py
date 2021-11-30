@@ -25,7 +25,7 @@ from metaflow import current, FlowSpec, step, Parameter, project, JSONType, cond
     },
     python="3.8",
 )
-@project(name="industrial_taxoonomy")
+@project(name="industrial_taxonomy")
 class GlassNlpFlow(FlowSpec):
     n_process = Parameter(
         "n-process",
