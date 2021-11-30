@@ -12,9 +12,7 @@
 
 ## Features
 
-### Collect data
-
-Run `python industrial_taxonomy/pipeline/sic/flow.py --production run` to create the SIC code - name lookups
+Read instructions to reproduce the pipeline in `industrial_taxonomy/pipeline/README.md`.
 
 ## Contributor guidelines
 

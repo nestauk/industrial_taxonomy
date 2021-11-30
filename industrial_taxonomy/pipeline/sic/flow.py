@@ -3,7 +3,6 @@ from typing import Dict, List, Union
 
 from metaflow import FlowSpec, project, step
 
-## Declare constants in all caps at the top.
 URL = (
     "http://www.ons.gov.uk/file?uri=/methodology/classificationsandstandards/"
     "ukstandardindustrialclassificationofeconomicactivities/uksic2007/"
