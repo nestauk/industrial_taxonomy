@@ -12,12 +12,14 @@ def process_nomis(
     **kwargs,
 ):
     """Process nomis data
+
     Arguments:
         df: nomis table
         indicator_name: name of indicator
         value_column: value column
         source: data source
         indicator_column: column that contains the indicator
+
     Returns:
         A clean table with secondary data
     """

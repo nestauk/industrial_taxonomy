@@ -3,10 +3,10 @@
 from metaflow import FlowSpec, project, step
 from metaflow.decorators import StepDecorator
 
-URL = (
-    "https://www.ons.gov.uk/file?uri=/peoplepopulationandcommunity/populationandmigration/populationestimates/",
-    "datasets/populationestimatesforukenglandandwalesscotlandandnorthernireland/",
-    "mid2020/ukpopestimatesmid2020on2021geography.xls",
+POP_URL = (
+    "https://www.ons.gov.uk/file?uri=/peoplepopulationandcommunity/populationandmigration/populationestimates/"
+    "datasets/populationestimatesforukenglandandwalesscotlandandnorthernireland/"
+    "mid2020/ukpopestimatesmid2020on2021geography.xls"
 )
 
 
@@ -27,7 +27,7 @@ class PopEstimateData(FlowSpec):
         import pandas as pd
         from industrial_taxonomy.pipeline.official.utils import get
 
-        self.url = "".join(URL)
+        self.url = POP_URL
         self._raw_pop_test = pd.read_excel(get(self.url), sheet_name=6, skiprows=7)
 
         self.next(self.transform)

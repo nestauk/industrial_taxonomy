@@ -5,11 +5,13 @@ import pandas as pd
 
 from metaflow import FlowSpec, project, step
 
-URL = (
-    "https://www.ons.gov.uk/file?uri=/economy/grossdomesticproductgdp/datasets/",
-    "regionalgrossdomesticproductlocalauthorities/1998to2019/",
-    "regionalgrossdomesticproductlocalauthorities.xlsx",
+GDP_URL = (
+    "https://www.ons.gov.uk/file?uri=/economy/grossdomesticproductgdp/datasets/"
+    "regionalgrossdomesticproductlocalauthorities/1998to2019/"
+    "regionalgrossdomesticproductlocalauthorities.xlsx"
 )
+# Excel spreadsheets with the data we are interested in
+SHEETS = [7, 8]
 
 
 @project(name="industrial_taxonomy")
@@ -35,12 +37,12 @@ class LocalGdpData(FlowSpec):
         """Fetch the GDP data from the ONS"""
         from industrial_taxonomy.pipeline.official.utils import get
 
-        self.url = "".join(URL)
+        self.url = GDP_URL
         gdp_table = get(self.url)
 
         # Create dfs for the sheets with relevant information (population and GVA)
         self._pop_raw, self._gva_raw = [
-            pd.read_excel(gdp_table, sheet_name=sh, skiprows=1) for sh in [7, 8]
+            pd.read_excel(gdp_table, sheet_name=sh, skiprows=1) for sh in SHEETS
         ]
 
         self.next(self.transform)
