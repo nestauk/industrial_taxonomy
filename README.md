@@ -12,8 +12,6 @@
 
 ## Features
 
-### Pipeline
-
 Read instructions to reproduce the pipeline in `industrial_taxonomy/pipeline/README.md`.
 
 ## Contributor guidelines
