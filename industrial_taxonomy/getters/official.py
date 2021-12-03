@@ -6,7 +6,10 @@ from metaflow import Flow, Run
 from metaflow.exception import MetaflowNotFound
 from typing import Optional
 
-import pandas as pd
+try:  # Hack for type-hints on attributes
+    import pandas as pd
+except ImportError:
+    pass
 
 
 @lru_cache()
@@ -22,9 +25,12 @@ def get_run(flow_name: str) -> Run:
 def gva_lad(run: Optional[Run] = None):
     """get the GVA in a local authority
 
+    Arguments:
+        run: what run to get (if None it gets the lastest production run)
+
     Returns:
         Columns:
-            Name: itl1_region, dtype: str, NUTS1 region (e.g. Scotland, South East etc)
+            Name: nuts1_name, dtype: str, NUTS1 region (e.g. Scotland, South East etc)
             Name: la_code, dtype: str, local authority code
             Name: la_name, dtype: str, local authority name
             Name: year dtype: int, year (ranges between 1998 and 2019
@@ -35,17 +41,26 @@ def gva_lad(run: Optional[Run] = None):
     if run is None:
         run = get_run("LocalGdpData")
 
-    return pd.DataFrame(run.data.gva).melt(
-        id_vars=["itl1_region", "la_code", "la_name"], var_name="year", value_name="gva"
+    return (
+        pd.DataFrame(run.data.gva)
+        .melt(
+            id_vars=["itl1_region", "la_code", "la_name"],
+            var_name="year",
+            value_name="gva",
+        )
+        .rename(columns={"itl1_region": "nuts1_name"})
     )
 
 
 def population_lad(run: Optional[Run] = None):
     """get the population in a local authority
 
+    Arguments:
+        run: what run to get (if None it gets the lastest production run)
+
     Returns:
         Columns:
-            Name: itl1_region, dtype: str, NUTS1 region (e.g. Scotland, South East etc)
+            Name: nuts1_name, dtype: str, NUTS1 region (e.g. Scotland, South East etc)
             Name: la_code, dtype: str, local authority code
             Name: la_name, dtype: str, local authority name
             Name: year dtype: int, year (ranges between 1998 and 2019
@@ -56,8 +71,14 @@ def population_lad(run: Optional[Run] = None):
     if run is None:
         run = get_run("LocalGdpData")
 
-    return pd.DataFrame(run.data.pop).melt(
-        id_vars=["itl1_region", "la_code", "la_name"], var_name="year", value_name="pop"
+    return (
+        pd.DataFrame(run.data.pop)
+        .melt(
+            id_vars=["itl1_region", "la_code", "la_name"],
+            var_name="year",
+            value_name="pop",
+        )
+        .rename(columns={"itl1_region": "nuts1_name"})
     )
 
 
@@ -78,9 +99,8 @@ def gva_pc_lad():
     pop = population_lad()
 
     return (
-        gva.merge(pop, on=["itl1_region", "la_code", "la_name", "year"])
+        gva.merge(pop, on=["nuts1_name", "la_code", "la_name", "year"])
         .assign(gva_pc=lambda df: (1e6 * df["gva"] / df["pop"]).round(2))
-        .rename(columns={"itl1_region": "nuts1_name"})
         .drop(axis=1, labels=["gva", "pop"])
     )
 
@@ -89,6 +109,9 @@ def nomis(run: Optional[Run] = None):
     """Get nomis tables including variables from
         Annual Population Survey (APS)
         Annual Survey of Hours and Earnings (ASHE)
+
+    Arguments:
+        run: what run to get (if None it gets the lastest production run)
 
     Returns:
         Columns:

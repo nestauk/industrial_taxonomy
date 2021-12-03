@@ -1,8 +1,12 @@
 """Flow to collect NOMIS data with the exception of BRES"""
 from io import BytesIO
-import pandas as pd
 from metaflow import FlowSpec, project, step
 from typing import List, Dict, Union
+
+try:  # Hack for type-hints on attributes
+    from pandas import DataFrame
+except ImportError:
+    pass
 
 _APS_URL = (
     "https://www.nomisweb.co.uk/api/v01/dataset/NM_17_5.data.csv?"
@@ -51,7 +55,7 @@ class NomisTables(FlowSpec):
 
     # Type hints
     url_list: list
-    nomis_table: pd.DataFrame
+    nomis_table: "DataFrame"
     nomis_dict: List[Dict[str, Union[str, float]]]
 
     @step

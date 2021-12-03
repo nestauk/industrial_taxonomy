@@ -1,8 +1,12 @@
 """Fetch GDP data"""
 
 from typing import Dict, List, Union
-import pandas as pd
 from metaflow import FlowSpec, project, step
+
+try:  # Hack for type-hints on attributes
+    from pandas import DataFrame
+except ImportError:
+    pass
 
 GDP_URL = (
     "https://www.ons.gov.uk/file?uri=/economy/grossdomesticproductgdp/datasets/"
@@ -26,8 +30,8 @@ class LocalGdpData(FlowSpec):
     """
 
     url: str
-    gva_clean: pd.DataFrame
-    pop_clean: pd.DataFrame
+    gva_clean: "DataFrame"
+    pop_clean: "DataFrame"
     pop: List[Dict[str, Union[str, float]]]
     gva: List[Dict[str, Union[str, float]]]
 
