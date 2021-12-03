@@ -1,5 +1,4 @@
-# Utilities to clean population estimate code
-import pandas as df
+"""Utilities to clean population estimate code"""
 
 
 def clean_popest(table):

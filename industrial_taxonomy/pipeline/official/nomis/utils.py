@@ -1,4 +1,4 @@
-# Utilities to fetch Nomis data
+"""Utilities to fetch Nomis data"""
 
 import pandas as pd
 
@@ -9,7 +9,6 @@ def process_nomis(
     value_column: str,
     source: str,
     indicator_column: str = "MEASURES_NAME",
-    **kwargs,
 ):
     """Process nomis data
 

@@ -2,7 +2,6 @@
 
 from typing import Dict, List, Union
 import pandas as pd
-
 from metaflow import FlowSpec, project, step
 
 GDP_URL = (
@@ -35,10 +34,11 @@ class LocalGdpData(FlowSpec):
     @step
     def start(self):
         """Fetch the GDP data from the ONS"""
+        import pandas as pd
         from industrial_taxonomy.pipeline.official.utils import get
 
         self.url = GDP_URL
-        gdp_table = get(self.url)
+        gdp_table = get(self.url).content
 
         # Create dfs for the sheets with relevant information (population and GVA)
         self._gva_raw, self._pop_raw = [
@@ -50,7 +50,7 @@ class LocalGdpData(FlowSpec):
     @step
     def transform(self):
         """Clean up the data"""
-        from utils import process_gdp_table
+        from industrial_taxonomy.pipeline.official.gdp.utils import process_gdp_table
 
         self.pop_clean = process_gdp_table(self._pop_raw)
         self.gva_clean = process_gdp_table(self._gva_raw)

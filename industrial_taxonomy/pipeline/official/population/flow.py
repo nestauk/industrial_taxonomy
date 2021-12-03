@@ -1,10 +1,10 @@
-# Flow to fetch population data
+"""Flow to fetch population data"""
 
 from metaflow import FlowSpec, project, step
-from metaflow.decorators import StepDecorator
 
 POP_URL = (
-    "https://www.ons.gov.uk/file?uri=/peoplepopulationandcommunity/populationandmigration/populationestimates/"
+    "https://www.ons.gov.uk/file?uri=/peoplepopulationandcommunity/"
+    "populationandmigration/populationestimates/"
     "datasets/populationestimatesforukenglandandwalesscotlandandnorthernireland/"
     "mid2020/ukpopestimatesmid2020on2021geography.xls"
 )
@@ -28,7 +28,9 @@ class PopEstimateData(FlowSpec):
         from industrial_taxonomy.pipeline.official.utils import get
 
         self.url = POP_URL
-        self._raw_pop_test = pd.read_excel(get(self.url), sheet_name=6, skiprows=7)
+        self._raw_pop_test = pd.read_excel(
+            get(self.url).content, sheet_name=6, skiprows=7
+        )
 
         self.next(self.transform)
 
@@ -36,7 +38,7 @@ class PopEstimateData(FlowSpec):
     def transform(self):
         """Transform the population table"""
 
-        from utils import clean_popest
+        from industrial_taxonomy.pipeline.official.population.utils import clean_popest
 
         self.clean_popest = clean_popest(self._raw_pop_test)
 
