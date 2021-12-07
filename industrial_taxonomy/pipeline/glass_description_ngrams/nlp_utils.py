@@ -70,7 +70,7 @@ def _filter_frequency(
     documents: List[str], kwargs: Optional[Dict[str, Any]] = None
 ) -> Iterable[str]:
     """Filter `documents` based on token frequency corpus."""
-    dct = Dictionary(documents)
+    corpora_dict = Dictionary(documents)
 
     default_kwargs = dict(no_below=10, no_above=0.9, keep_n=1_000_000)
     if kwargs is None:
@@ -78,10 +78,10 @@ def _filter_frequency(
     else:
         kwargs = t.merge(default_kwargs, kwargs)
 
-    dct.filter_extremes(**kwargs)
+    corpora_dict.filter_extremes(**kwargs)
     return t.pipe(
         documents,
-        t.map(lambda document: [token for token in document if token in dct.token2id]),
+        t.map(lambda doc: [token for token in doc if token in corpora_dict.token2id]),
     )
 
 
