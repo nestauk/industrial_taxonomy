@@ -1,9 +1,11 @@
 from itertools import product
+from functools import reduce
 from typing import Any, Dict, Iterable, List, Optional, Set
 
 import spacy
 import toolz.curried as t
-from gensim import models
+from gensim.models import Phrases
+from gensim.models.phrases import FrozenPhrases
 from gensim.corpora import Dictionary
 from spacy.lang.en import STOP_WORDS
 from spacy.tokens import Doc, Token
@@ -42,15 +44,12 @@ def build_ngrams(
     }
     phrase_kws = t.merge(def_phrase_kws, phrase_kws or {})
 
-    step = 1
-    while step < n:
-        phrases = models.Phrases(documents, **phrase_kws)
-        bigram = models.phrases.Phraser(phrases)
-        del phrases
-        tokenised = bigram[documents]
-        step += 1
+    def step(documents, n):
+        print(f"N-gram: {n}")
+        bigram = FrozenPhrases(Phrases(documents, **phrase_kws))
+        return bigram[documents]
 
-    return list(tokenised)
+    return reduce(step, range(2, n + 1), documents)
 
 
 def _token_filter(tokens: Iterable[str]) -> Iterable[str]:
