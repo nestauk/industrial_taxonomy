@@ -44,6 +44,12 @@ def glass_companies_house_lookup(
     """Lookup from glass organisation ID to Companies House number."""
     run = run or get_run()
 
+    if min_match_threshold < run.data.drop_matches_below:
+        raise ValueError(
+            f"`min_match_threshold` ({min_match_threshold}) is less than the "
+            f"`{run}.data.drop_matches_below` ({run.data.drop_matches_below})"
+        )
+
     return {
         row["org_id"]: row["company_number"]
         for row in glass_companies_house_matches(run)
