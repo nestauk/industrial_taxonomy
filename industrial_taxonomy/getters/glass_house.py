@@ -10,7 +10,7 @@ from industrial_taxonomy import config
 
 if config is None:
     raise FileNotFoundError("Could not find config file.")
-MATCH_THRESHOLD: int = config["glass_house"]["match_threshold"]
+MIN_MATCH_SCORE: int = config["glass_house"]["min_match_score"]
 
 # Type aliases
 glass_id = int
@@ -39,7 +39,7 @@ def get_run():
 
 def glass_companies_house_lookup(
     run: Optional[Run] = None,
-    threshold: int = MATCH_THRESHOLD,
+    min_match_threshold: int = MIN_MATCH_SCORE,
 ) -> Dict[glass_id, company_number]:
     """Lookup from glass organisation ID to Companies House number."""
     run = run or get_run()
@@ -47,7 +47,7 @@ def glass_companies_house_lookup(
     return {
         row["org_id"]: row["company_number"]
         for row in glass_companies_house_matches(run)
-        if row["sim_mean"] >= threshold
+        if row["sim_mean"] >= min_match_threshold
     }
 
 

@@ -4,4 +4,4 @@ flows:
   glass:
     run_id: 414
 glass_house:
-  match_threshold: 80
+  min_match_score: 80
