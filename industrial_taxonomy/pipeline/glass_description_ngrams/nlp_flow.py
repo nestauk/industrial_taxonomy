@@ -9,6 +9,8 @@ from metaflow import current, FlowSpec, step, Parameter, project, JSONType, cond
         "toolz": ">0.11",
         "gensim": ">=4.0",
         "spacy-model-en_core_web_lg": ">=3.0",
+        "beautifulsoup4": "4.10.0",
+        "lxml": ">=4.6",
     },
     python="3.8",
 )
@@ -96,19 +98,33 @@ class GlassNlpFlow(FlowSpec):
     @step
     def process(self):
         """Run the NLP pipeline, returning tokenised documents."""
-        import toolz.curried as t
+        from bs4 import BeautifulSoup
+        from toolz.curried import map as mapc, pipe
         from nlp_utils import spacy_pipeline, ngram_pipeline, spacy_to_tokens
 
-        tokens = t.pipe(
+        def _strip_html(document: str) -> str:
+            # noqa: DAR
+            """Strips lingering HTML tags and parses HTML escape characters.
+
+            Doesn't remove partial tags (which do exist in the Glass data), e.g.
+            - 'p> This is a description</p>' => 'p> This is a description'
+            - 'a href="http://foo.bar"><img src="foo' => 'a href="http://foo.bar">'
+
+            There is a small change of what could be seen as a false removal, e.g.
+            - 'something <word-without-space-before' => something '
+            """
+            return BeautifulSoup(document, "lxml").text
+
+        tokens = pipe(
             self.pop_documents(),
-            # TODO Step: Remove HTML ?
+            mapc(_strip_html),
             # Step: Spacy
             lambda docs: spacy_pipeline().pipe(docs, n_process=self.n_process),
             # Step: Spacy -> (ordered) Bag of words
-            t.map(spacy_to_tokens(entity_mappings=None)),
+            mapc(spacy_to_tokens(entity_mappings=None)),  # pylint: disable=E1120
             # Step: construct n-grams
             list,
-            ngram_pipeline(n=self.n_gram),
+            ngram_pipeline(n=self.n_gram),  # pylint: disable=E1120
         )
 
         self.documents = dict(zip(self.keys, tokens))
