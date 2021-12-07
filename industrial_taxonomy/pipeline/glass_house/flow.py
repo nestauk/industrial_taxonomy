@@ -30,6 +30,18 @@ CHUNKSIZE = 100_000  # Chunksize of matches output by Jacchammer and persisted t
 class JacchammerFlow(FlowSpec):
     """Fuzzy match Companies House and Glass AI names using Jacchammer.
 
+    Method overview:
+    - Use two methods to generate pairs of names likely to be similar without
+      realising all pairwise combinations which is prohibitively expensive.
+      1. MinHash + Locality Sensitive Hashing
+      2. Top-k Cosine similarity of TF-IDF
+    - For the pairs in the previous step calculate the exactly similarity via.
+      multiple methods.
+      1. Jaccard Similarity of k-shingles
+      2. Levenshtein score
+      3. Cosine similarity of TF-IDF
+    - Return Companies House name with highest mean match score for each Glass name
+
     Attributes:
         run_id: The origin run ID of the flow
         ch_names: Companies House company names
@@ -116,6 +128,13 @@ class JacchammerFlow(FlowSpec):
         tmp_dir = Path(TemporaryDirectory(dir=".").name)
         tmp_dir.mkdir()
 
+        # When Jacchammer generates candidate pairs likely to be similar,
+        # it vastly decreases the number of pairwise comparisons necessary such
+        # that the matching task becomes computationally feasible; however the
+        # number of candidate pairs is still very large!
+        # Persisting the full list of matches as a regular Metaflow artifact
+        # is not feasible therefore we persist smaller chunks of matches to S3
+        # (Jacchammer can output chunks of matches to slightly ease memory usage.)
         chunks = match_names_stream(
             [self.clean_ch_names.tolist(), self.clean_glass_names.tolist()],
             threshold=self.drop_matches_below,
