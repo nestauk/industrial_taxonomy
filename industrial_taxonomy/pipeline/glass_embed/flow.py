@@ -1,3 +1,5 @@
+from typing import List
+
 from metaflow import FlowSpec, step, pip, batch, project, conda_base, Parameter, current
 import numpy.typing as npt
 
@@ -7,7 +9,7 @@ except ImportError:
     pass
 
 
-MODEL = "multi-qa-MiniLM-L6-cos-v1"
+ENCODER_MODEL = "multi-qa-MiniLM-L6-cos-v1"
 
 
 @conda_base(python="3.9")
@@ -29,6 +31,7 @@ class GlassEmbed(FlowSpec):
     )
 
     org_descriptions: "DataFrame"
+    org_ids: List
     model: str
     embeddings: npt.ArrayLike
 
@@ -39,24 +42,30 @@ class GlassEmbed(FlowSpec):
         from industrial_taxonomy.getters.glass import get_organisation_description
         from industrial_taxonomy.getters.glass_house import glass_companies_house_lookup
 
-        org_ids = list(glass_companies_house_lookup().keys())
+        org_descriptions = get_organisation_description()
 
-        self.org_descriptions = get_organisation_description().loc[org_ids]
+        self.org_ids = org_descriptions.index.intersection(
+            list(glass_companies_house_lookup().keys())
+        )
+
+        self.org_descriptions = org_descriptions.loc[self.org_ids]
 
         if self.test_mode and not current.is_production:
             self.org_descriptions = self.org_descriptions.head(1000)
 
         self.next(self.embed_descriptions)
 
+    @batch(memory=32_000)
     @pip(path="requirements.txt")
-    @batch(memory=32_000, gpu=1)
     @step
     def embed_descriptions(self):
-        """Apply transformer to embed Glass descriptions"""
+        """Apply transformer to Glass descriptions"""
         from sentence_transformers import SentenceTransformer
 
-        encoder = SentenceTransformer(MODEL)
+        encoder = SentenceTransformer(ENCODER_MODEL)
         self.embeddings = encoder.encode(self.org_descriptions["description"].to_list())
+
+        del self.org_descriptions
 
         self.next(self.end)
 
