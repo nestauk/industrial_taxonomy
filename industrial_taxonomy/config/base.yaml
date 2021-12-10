@@ -3,3 +3,5 @@ flows:
     run_id: 890
   glass:
     run_id: 414
+glass_house:
+  min_match_score: 80

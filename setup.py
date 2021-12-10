@@ -23,4 +23,5 @@ setup(
     description="Refactor of nestauk/industrial-taxonomy which upon completion will replace it.",
     author="Nesta",
     license="MIT",
+    include_package_data=True,
 )
