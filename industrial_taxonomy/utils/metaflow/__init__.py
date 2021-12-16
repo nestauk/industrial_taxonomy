@@ -1,3 +1,3 @@
-from .client import namespace_context
+from .client import get_run, namespace_context
 
-__all__ = ["namespace_context"]
+__all__ = ["get_run", "namespace_context"]

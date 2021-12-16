@@ -24,3 +24,15 @@ python industrial_taxonomy/pipeline/glass_house/flow.py \
  --clean-names true \
  --with batch
 ```
+
+## 3. Tokenise and N-gram Glass descriptions
+
+```bash
+python industrial_taxonomy/pipeline/glass_description_ngrams/nlp_flow.py \
+ --environment=conda \
+ --production \
+ run \
+ --n-gram 3 \
+ --n-process 2 \
+ --with batch:memory=32000,cpu=2
+```
