@@ -48,7 +48,11 @@ class GlassNlpFlow(FlowSpec):
     )
     n_gram = Parameter(
         "n-gram",
-        help="The `N` in N-gram",
+        help=(
+            "The `N` used for statistical N-gramming. Note that some tokens "
+            "may appear as if they have more than `n-gram`-grams because we "
+            "perform entity merging with Spacy as well as statistical n-gramming."
+        ),
         type=int,
         default=2,
     )
