@@ -1,6 +1,7 @@
 from typing import List
 
 from metaflow import FlowSpec, step, pip, batch, project, conda_base, Parameter, current
+import numpy as np
 import numpy.typing as npt
 
 try:  # Hack for type-hints on attributes
@@ -8,11 +9,10 @@ try:  # Hack for type-hints on attributes
 except ImportError:
     pass
 
+ENCODER_MODEL = "sentence-transformers/multi-qa-MiniLM-L6-cos-v1"
 
-ENCODER_MODEL = "multi-qa-MiniLM-L6-cos-v1"
 
-
-@conda_base(python="3.9")
+@conda_base(python="3.8")
 @project(name="industrial_taxonomy")
 class GlassEmbed(FlowSpec):
     """Transform descriptions of fuzzy matched companies into embeddings.
@@ -43,29 +43,55 @@ class GlassEmbed(FlowSpec):
         from industrial_taxonomy.getters.glass_house import glass_companies_house_lookup
 
         org_descriptions = get_organisation_description()
-
         self.org_ids = org_descriptions.index.intersection(
             list(glass_companies_house_lookup().keys())
         )
-
-        self.org_descriptions = org_descriptions.loc[self.org_ids]
+        org_descriptions = org_descriptions.loc[self.org_ids]
 
         if self.test_mode and not current.is_production:
-            self.org_descriptions = self.org_descriptions.head(1000)
+            org_descriptions = org_descriptions.head(200_000)
 
-        self.next(self.embed_descriptions)
+        batch_size = 100_000
+        # self.org_description_chunks = chunks(
+        #     org_descriptions, batch_size
+        # )
+        self.org_description_chunks = [
+            org_descriptions[i : i + batch_size]
+            for i in range(0, len(org_descriptions), batch_size)
+        ]
 
-    @batch(memory=32_000)
+        self.next(self.embed_descriptions, foreach="org_description_chunks")
+
+    @batch(gpu=1, queue="job-queue-GPU-nesta-metaflow", image="pytorch/pytorch")
     @pip(path="requirements.txt")
     @step
     def embed_descriptions(self):
         """Apply transformer to Glass descriptions"""
+        # from industrial_taxonomy.pipeline.glass_embed.utils import encode, chunks, load_model, load_tokenizer
         from sentence_transformers import SentenceTransformer
+        from torch import cuda
+
+        assert cuda.is_available(), "Cuda not available!"
+        # tokenizer = load_tokenizer(ENCODER_MODEL)
+        # model = load_model(ENCODER_MODEL)
+
+        # chunk_size = 100
+        # embedding_chunks = []
+        # for chunk in chunks(self.input['description'].to_list(), chunk_size):
+        #     embedding_chunks.append(
+        #         encode(chunk, tokenizer, model)
+        #     )
+
+        # self.embeddings_chunk = np.concatenate(embedding_chunks)
 
         encoder = SentenceTransformer(ENCODER_MODEL)
-        self.embeddings = encoder.encode(self.org_descriptions["description"].to_list())
+        self.embeddings_chunk = encoder.encode(self.input["description"].to_list())
 
-        del self.org_descriptions
+        self.next(self.join)
+
+    @step
+    def join(self, inputs):
+        self.embeddings = np.concatenate([input.embeddings_chunk for input in inputs])
 
         self.next(self.end)
 
