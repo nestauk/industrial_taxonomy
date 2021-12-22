@@ -1,6 +1,6 @@
 from typing import List
 
-from metaflow import FlowSpec, step, pip, batch, project, conda_base, Parameter, current
+from metaflow import FlowSpec, step, pip, batch, project, Parameter, current
 import numpy as np
 import numpy.typing as npt
 
@@ -12,7 +12,6 @@ except ImportError:
 ENCODER_MODEL = "sentence-transformers/multi-qa-MiniLM-L6-cos-v1"
 
 
-@conda_base(python="3.8")
 @project(name="industrial_taxonomy")
 class GlassEmbed(FlowSpec):
     """Transform descriptions of fuzzy matched companies into embeddings.
@@ -62,7 +61,14 @@ class GlassEmbed(FlowSpec):
 
         self.next(self.embed_descriptions, foreach="org_description_chunks")
 
-    @batch(gpu=1, queue="job-queue-GPU-nesta-metaflow", image="pytorch/pytorch")
+    @batch(
+        queue="job-queue-GPU-nesta-metaflow",
+        image="metaflow-pytorch",
+        # Queue gives p3.2xlarge, with:
+        gpu=1,
+        memory=61000,
+        cpu=8,
+    )
     @pip(path="requirements.txt")
     @step
     def embed_descriptions(self):
