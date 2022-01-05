@@ -9,6 +9,8 @@ try:  # Hack for type-hints on attributes
 except ImportError:
     pass
 
+from industrial_taxonomy.pipeline.glass_embed.utils import chunks
+
 ENCODER_MODEL = "sentence-transformers/multi-qa-MiniLM-L6-cos-v1"
 
 
@@ -44,20 +46,19 @@ class GlassEmbed(FlowSpec):
         org_descriptions = get_organisation_description()
         self.org_ids = org_descriptions.index.intersection(
             list(glass_companies_house_lookup().keys())
-        )
+        ).to_list()
+
         org_descriptions = org_descriptions.loc[self.org_ids]
 
         if self.test_mode and not current.is_production:
-            org_descriptions = org_descriptions.head(200_000)
+            test_size = 200_000
+            org_descriptions = org_descriptions.head(test_size)
+            self.org_ids = self.org_ids[:test_size]
+
+        org_descriptions = org_descriptions["description"].to_list()
 
         batch_size = 100_000
-        # self.org_description_chunks = chunks(
-        #     org_descriptions, batch_size
-        # )
-        self.org_description_chunks = [
-            org_descriptions[i : i + batch_size]
-            for i in range(0, len(org_descriptions), batch_size)
-        ]
+        self.org_description_chunks = chunks(org_descriptions, batch_size)
 
         self.next(self.embed_descriptions, foreach="org_description_chunks")
 
@@ -77,21 +78,11 @@ class GlassEmbed(FlowSpec):
         from sentence_transformers import SentenceTransformer
         from torch import cuda
 
-        assert cuda.is_available(), "Cuda not available!"
-        # tokenizer = load_tokenizer(ENCODER_MODEL)
-        # model = load_model(ENCODER_MODEL)
-
-        # chunk_size = 100
-        # embedding_chunks = []
-        # for chunk in chunks(self.input['description'].to_list(), chunk_size):
-        #     embedding_chunks.append(
-        #         encode(chunk, tokenizer, model)
-        #     )
-
-        # self.embeddings_chunk = np.concatenate(embedding_chunks)
+        if not cuda.is_available():
+            raise EnvironmentError("CUDA is not available")
 
         encoder = SentenceTransformer(ENCODER_MODEL)
-        self.embeddings_chunk = encoder.encode(self.input["description"].to_list())
+        self.embeddings_chunk = encoder.encode(self.input)
 
         self.next(self.join)
 
