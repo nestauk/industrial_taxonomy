@@ -36,3 +36,12 @@ python industrial_taxonomy/pipeline/glass_description_ngrams/nlp_flow.py \
  --n-process 2 \
  --with batch:memory=32000,cpu=2
 ```
+
+## 4. Vectorise Glass descriptions
+
+```bash
+python industrial_taxonomy/pipeline/glass_embed/flow.py \
+ --environment=conda \
+ --production \
+ run
+```
