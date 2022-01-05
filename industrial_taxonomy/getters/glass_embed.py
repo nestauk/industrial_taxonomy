@@ -17,10 +17,10 @@ def get_run():
         raise MetaflowNotFound("Embedding run not found") from exc
 
 
-def glass_embeddings(
+def glass_description_embeddings(
     run: Optional[Run] = None,
 ) -> npt.ArrayLike:
-    """ "Gets embeddings of Glass orgsanisations."""
+    """ "Gets embeddings of Glass orgsanisation descriptions."""
     run = run or get_run()
     return run.data.embeddings
 
