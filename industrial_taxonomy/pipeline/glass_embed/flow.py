@@ -74,7 +74,6 @@ class GlassEmbed(FlowSpec):
     @step
     def embed_descriptions(self):
         """Apply transformer to Glass descriptions"""
-        # from industrial_taxonomy.pipeline.glass_embed.utils import encode, chunks, load_model, load_tokenizer
         from sentence_transformers import SentenceTransformer
         from torch import cuda
 
