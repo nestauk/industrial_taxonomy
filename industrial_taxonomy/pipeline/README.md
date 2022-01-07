@@ -49,7 +49,7 @@ python industrial_taxonomy/pipeline/glass_clusters/flow.py \
 
 ```bash
 python industrial_taxonomy/pipeline/glass_embed/flow.py \
- --environment=conda \
  --production \
+ --no-pylint \
  run
 ```
