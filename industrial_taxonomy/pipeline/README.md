@@ -41,7 +41,7 @@ python industrial_taxonomy/pipeline/glass_description_ngrams/nlp_flow.py \
 
 ```bash
 python industrial_taxonomy/pipeline/glass_embed/flow.py \
- --environment=conda \
  --production \
+ --no-pylint \
  run
 ```
