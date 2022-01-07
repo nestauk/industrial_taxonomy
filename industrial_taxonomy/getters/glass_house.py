@@ -2,6 +2,7 @@
 from typing import Dict, List, Optional, TypedDict
 
 from metaflow import Run
+import numpy.typing as npt
 
 from industrial_taxonomy import config
 from industrial_taxonomy.utils.metaflow import get_run
@@ -79,3 +80,23 @@ def glass_sic4_lookup() -> dict:
         .set_index("org_id")["SIC4_CODE"]
         .to_dict()
     )
+
+
+def description_embeddings(
+    run: Optional[Run] = None,
+) -> npt.ArrayLike:
+    """Gets embeddings of Glass organisation descriptions.
+
+    Returns a 2d array of size (n, m) where n is the number of companies and
+    m is the length of each embedding.
+    """
+    run = run or get_run("GlassEmbed")
+    return run.data.embeddings
+
+
+def embedding_org_ids(run: Optional[Run] = None) -> List[int]:
+    """Gets IDs of embedded Glass organisations."""
+    # run = run or get_run()
+    run = run or get_run("GlassEmbed")
+    # step = Step(f"GlassEmbed/{run.id}/start")
+    return run.data.org_ids
