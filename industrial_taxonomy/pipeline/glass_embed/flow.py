@@ -4,24 +4,35 @@ from metaflow import FlowSpec, step, pip, batch, project, Parameter, current
 import numpy as np
 import numpy.typing as npt
 
+# from toolz.itertoolz import partition
+
 try:  # Hack for type-hints on attributes
     from pandas import DataFrame
 except ImportError:
     pass
 
-from industrial_taxonomy.pipeline.glass_embed.utils import chunks
+# from industrial_taxonomy.pipeline.glass_embed.utils import chunks
 
-ENCODER_MODEL = "sentence-transformers/multi-qa-MiniLM-L6-cos-v1"
+MODEL_NAME = "sentence-transformers/multi-qa-MiniLM-L6-cos-v1"
 
 
 @project(name="industrial_taxonomy")
 class GlassEmbed(FlowSpec):
     """Transform descriptions of fuzzy matched companies into embeddings.
 
+    This uses the multi-qa-MiniLM-L6-cos-v1 transformer model which encodes up
+    to 512 tokens per document and produced embeddings with 384 dimensions.
+    It was trained by chosen as a compromise between speed/size and performance
+    according to this comparison chart produced by its creators:
+    https://www.sbert.net/docs/pretrained_models.html#model-overview
+
+    The model produces normalised embeddings of length 1, meaning that the dot
+    and cosine products are equivalent.
+
     Attributes:
-        org_descriptions: Descriptions that are encoded
-        model: Pre-trained transformer model used to perform encodings
-        embeddings: Embeddings of org_descriptions
+        embeddings: Embeddings of Glass org descriptions
+        model_name: Name of pre-trained transformer model used to generate encodings
+        org_ids: Glass IDs for orgs with embeddings (follows order of embeddings)
     """
 
     test_mode = Parameter(
@@ -38,7 +49,9 @@ class GlassEmbed(FlowSpec):
 
     @step
     def start(self):
-        """Load matched Glass and Companies House IDs"""
+        """Load matched Glass and Companies House IDs and split into chunks
+        for embedding.
+        """
 
         from industrial_taxonomy.getters.glass import get_organisation_description
         from industrial_taxonomy.getters.glass_house import glass_companies_house_lookup
@@ -48,19 +61,14 @@ class GlassEmbed(FlowSpec):
             list(glass_companies_house_lookup().keys())
         ).to_list()
 
-        org_descriptions = org_descriptions.loc[self.org_ids]
+        nrows = 50_000 if self.test_mode and not current.is_production else None
+        self.org_ids = self.org_ids[:nrows]
 
-        if self.test_mode and not current.is_production:
-            test_size = 200_000
-            org_descriptions = org_descriptions.head(test_size)
-            self.org_ids = self.org_ids[:test_size]
+        self.org_descriptions = org_descriptions.loc[self.org_ids][
+            "description"
+        ].to_list()
 
-        org_descriptions = org_descriptions["description"].to_list()
-
-        batch_size = 100_000
-        self.org_description_chunks = chunks(org_descriptions, batch_size)
-
-        self.next(self.embed_descriptions, foreach="org_description_chunks")
+        self.next(self.embed_descriptions)
 
     @batch(
         queue="job-queue-GPU-nesta-metaflow",
@@ -70,7 +78,7 @@ class GlassEmbed(FlowSpec):
         memory=61000,
         cpu=8,
     )
-    @pip(path="requirements.txt")
+    @pip(libraries={"sentence-transformers": "2.1.0"})
     @step
     def embed_descriptions(self):
         """Apply transformer to Glass descriptions"""
@@ -80,19 +88,17 @@ class GlassEmbed(FlowSpec):
         if not cuda.is_available():
             raise EnvironmentError("CUDA is not available")
 
-        encoder = SentenceTransformer(ENCODER_MODEL)
-        self.embeddings_chunk = encoder.encode(self.input)
+        self.model_name = MODEL_NAME
+        encoder = SentenceTransformer(self.model_name)
+        self.embeddings = encoder.encode(self.org_descriptions)
 
-        self.next(self.join)
-
-    @step
-    def join(self, inputs):
-        self.embeddings = np.concatenate([input.embeddings_chunk for input in inputs])
+        del self.org_descriptions
 
         self.next(self.end)
 
     @step
     def end(self):
+        """No-op."""
         pass
 
 
