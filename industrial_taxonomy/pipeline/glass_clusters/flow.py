@@ -22,8 +22,8 @@ class ClusterGlass(FlowSpec):
     """
 
     min_sector_size: int
-    assigned_shares = List[float]
-    sectors_corpora = Dict[str, Dict[str, List[str]]]
+    assigned_shares: List[float]
+    sectors_corpora: List[Dict[str, Dict[str, List[str]]]]
     sectors: List[str]
     clusters: List[Tuple[int, str]]
     models: Dict[str, Dict[str, sbmtm]]
@@ -38,7 +38,8 @@ class ClusterGlass(FlowSpec):
         "assigned-shares",
         help="share of companies to assign",
         type=JSONType,
-        default="[0.1,0.25,0.5,1]",
+        # default="[0.01,0.1,0.5,1]",
+        default='[10,"all"]',
     )
 
     @step
@@ -56,7 +57,7 @@ class ClusterGlass(FlowSpec):
 
         sector_corpora = make_sector_corpora(min_sector_size=self.min_sector_size)
 
-        self.sectors_corpora = [
+        all_sectors_corpora = [
             [sector, corp]
             for sector, corp in zip(
                 list(sector_corpora.keys()), sector_corpora.values()
@@ -64,7 +65,9 @@ class ClusterGlass(FlowSpec):
         ]
 
         if self.test_mode is True:
-            self.sectors_corpora = self.sectors_corpora[:3]
+            self.sectors_corpora = all_sectors_corpora[:3]
+        else:
+            self.sectors_corpora = all_sectors_corpora
 
         self.next(self.start_parallel_clustering)
 
@@ -86,7 +89,7 @@ class ClusterGlass(FlowSpec):
         sectors = [corp[0] for corp in self.sectors_corpora]
         models = [fit_model_sector(corp[1]) for corp in self.sectors_corpora]
         clusters = [
-            extract_clusters(mod, sect, quantile=self.input)
+            extract_clusters(mod, sect, docs_to_assign=self.input)
             for sect, mod in zip(sectors, models)
         ]
 
