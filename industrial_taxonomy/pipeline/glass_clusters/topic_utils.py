@@ -1,3 +1,5 @@
+# Utilities to fit topics models and
+
 from typing import List, Tuple, Dict
 import numpy as np
 from industrial_taxonomy.pipeline.glass_clusters.hSBM_Topicmodel.sbmtm import sbmtm
@@ -50,7 +52,7 @@ def extract_clusters(
     Returns:
         A tuple with doc ids and their cluster names (SIC label + cluster id number)
     """
-    n = int(np.quantile(len(model.documents), quantile))
-    cluster_assignment = model.clusters(l=cl_level, n=n)
+    extract_n = int(np.quantile(len(model.documents), quantile))
+    cluster_assignment = model.clusters(l=cl_level, n=extract_n)
 
     return [(f"{sector}_{k}", el[0]) for k, v in cluster_assignment.items() for el in v]

@@ -36,3 +36,12 @@ python industrial_taxonomy/pipeline/glass_description_ngrams/nlp_flow.py \
  --n-process 2 \
  --with batch:memory=32000,cpu=2
 ```
+
+## 4. Cluster glass descriptions into text sectors
+
+```bash
+python industrial_taxonomy/pipeline/glass_clusters/flow.py \
+--datastore=s3 \
+--production  run \
+--test-mode=False
+```

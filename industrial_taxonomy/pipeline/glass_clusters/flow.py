@@ -1,8 +1,8 @@
 """Flow to cluster glass companies into text clusters
 """
 
-from typing import List, Tuple, Union
-from metaflow import FlowSpec, project, step, Parameter
+from typing import Dict, List, Tuple
+from metaflow import FlowSpec, JSONType, project, step, Parameter
 from industrial_taxonomy.pipeline.glass_clusters.hSBM_Topicmodel.sbmtm import sbmtm
 
 
@@ -13,24 +13,33 @@ class ClusterGlass(FlowSpec):
 
     Attributes:
         min_sector_size: minimum sector size
-        cluster_n: number of companies to cluster
-        sector_corpora: tokenised descriptions by sector
-        text_sectors: lookup between company ids and clusters
-        models: topsbm models we will use for robustness tests etc
+        assigned_shares = share of companies to assign to cluster
+        sectors: sectors we train the model on
+        sectors_corpora: tokenised descriptions by sector
+        models: topsbm models we will use for robustness / sanity checks etc
+        clusters: lookup between company ids and clusters they are assigned to
+            clusters are named as {SIC_4 the company belongs to}_{topsbm cluster id}
     """
 
     min_sector_size: int
-    cluster_n: Union[str, int]
-    sectors: List
-    corpora: List
-    text_sectors: List[Tuple[int, str]]
-    model: List[sbmtm]
+    assigned_shares = List[float]
+    sectors_corpora = Dict[str, Dict[str, List[str]]]
+    sectors: List[str]
+    clusters: List[Tuple[int, str]]
+    models: Dict[str, Dict[str, sbmtm]]
 
     min_sector_size = Parameter(
         "min-sector-size", help="minimum sector size", default=1000
     )
 
     test_mode = Parameter("test-mode", help="Run in test mode", default=True)
+
+    assigned_shares = Parameter(
+        "assigned-shares",
+        help="share of companies to assign",
+        type=JSONType,
+        default="[0.1,0.25,0.5,1]",
+    )
 
     @step
     def start(self):
@@ -55,9 +64,15 @@ class ClusterGlass(FlowSpec):
         ]
 
         if self.test_mode is True:
-            self.sectors_corpora = self.sectors_corpora[-3:]
+            self.sectors_corpora = self.sectors_corpora[:3]
 
-        self.next(self.cluster_glass_descriptions, foreach="sectors_corpora")
+        self.next(self.start_parallel_clustering)
+
+    @step
+    def start_parallel_clustering(self):
+        """Creates a branch for every assignment share value"""
+
+        self.next(self.cluster_glass_descriptions, foreach="assigned_shares")
 
     @step
     def cluster_glass_descriptions(self):
@@ -68,20 +83,37 @@ class ClusterGlass(FlowSpec):
             extract_clusters,
         )
 
-        sector = self.input[0]
-        model = fit_model_sector(self.input[1])
-        clusters = extract_clusters(model, sector, 1)
-        self.outputs = [sector, model, clusters]
+        sectors = [corp[0] for corp in self.sectors_corpora]
+        models = [fit_model_sector(corp[1]) for corp in self.sectors_corpora]
+        clusters = [
+            extract_clusters(mod, sect, quantile=self.input)
+            for sect, mod in zip(sectors, models)
+        ]
 
-        self.next(self.join)
+        self.outputs = [sectors, models, clusters]
+
+        self.next(self.join_clusters)
 
     @step
-    def join(self, inputs):
-        """Combine previous results"""
+    def join_clusters(self, inputs):
+        """Combine branched cluster assignments"""
         from itertools import chain
 
-        self.models = {input.outputs[0]: input.outputs[1] for input in inputs}
-        self.clusters = list(chain(*[input.outputs[2] for input in inputs]))
+        # Sectors are the same for all assignment strategies
+        self.sectors = set(chain(*[input.outputs[0] for input in inputs]))
+
+        self.models = {
+            f"assigned_{str(param)}": {
+                sector: model
+                for sector, model in zip(input.outputs[0], input.outputs[1])
+            }
+            for param, input in zip(self.assigned_shares, inputs)
+        }
+
+        self.clusters = {
+            f"assigned_{str(param)}": list(chain(*[cl for cl in input.outputs[2]]))
+            for param, input in zip(self.assigned_shares, inputs)
+        }
 
         self.next(self.end)
 
