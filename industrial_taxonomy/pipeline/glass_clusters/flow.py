@@ -38,8 +38,7 @@ class ClusterGlass(FlowSpec):
         "assigned-shares",
         help="share of companies to assign",
         type=JSONType,
-        # default="[0.01,0.1,0.5,1]",
-        default='[10,"all"]',
+        default='[10,100,500,0.5,"all"]',
     )
 
     @step
