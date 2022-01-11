@@ -1,17 +1,12 @@
 from typing import List
 
 from metaflow import FlowSpec, step, pip, batch, project, Parameter, current
-import numpy as np
 import numpy.typing as npt
-
-# from toolz.itertoolz import partition
 
 try:  # Hack for type-hints on attributes
     from pandas import DataFrame
 except ImportError:
     pass
-
-# from industrial_taxonomy.pipeline.glass_embed.utils import chunks
 
 MODEL_NAME = "sentence-transformers/multi-qa-MiniLM-L6-cos-v1"
 
@@ -21,8 +16,8 @@ class GlassEmbed(FlowSpec):
     """Transform descriptions of fuzzy matched companies into embeddings.
 
     This uses the multi-qa-MiniLM-L6-cos-v1 transformer model which encodes up
-    to 512 tokens per document and produced embeddings with 384 dimensions.
-    It was trained by chosen as a compromise between speed/size and performance
+    to 512 tokens per document and produces embeddings with 384 dimensions.
+    It was chosen as a compromise between speed/size and performance
     according to this comparison chart produced by its creators:
     https://www.sbert.net/docs/pretrained_models.html#model-overview
 
@@ -32,6 +27,7 @@ class GlassEmbed(FlowSpec):
     Attributes:
         embeddings: Embeddings of Glass org descriptions
         model_name: Name of pre-trained transformer model used to generate encodings
+        org_descriptions: Descriptions of Glass organisations that are embedded
         org_ids: Glass IDs for orgs with embeddings (follows order of embeddings)
     """
 
@@ -42,10 +38,10 @@ class GlassEmbed(FlowSpec):
         default=lambda _: not current.is_production,
     )
 
+    embeddings: npt.ArrayLike
+    model_name: str
     org_descriptions: "DataFrame"
     org_ids: List
-    model: str
-    embeddings: npt.ArrayLike
 
     @step
     def start(self):
