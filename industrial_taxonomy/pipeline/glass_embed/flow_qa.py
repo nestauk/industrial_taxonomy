@@ -11,15 +11,13 @@ from industrial_taxonomy.getters.glass_house import (
     embedded_org_descriptions,
     encoder_name,
 )
+from industrial_taxonomy.pipeline.glass_embed.qa_utils import (
+    full_text_tokenize,
+    tokenized_length_histogram,
+    tokenized_original_length,
+)
 
-# from industrial_taxonomy.pipeline.glass_embed.qa_utils import (
-#     full_text_tokenize,
-#     tokenized_length_histogram,
-#     tokenized_original_length
-# )
 
-
-@conda_base(python="3.9")
 @project(name="industrial_taxonomy")
 class GlassEmbedQA(FlowSpec):
     """Produces outputs for QA of results from GlassEmbed flow."""
