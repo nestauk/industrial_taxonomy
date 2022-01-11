@@ -67,16 +67,30 @@ def description_embeddings(
 ) -> npt.ArrayLike:
     """Gets embeddings of Glass organisation descriptions.
 
-    Returns a 2d array of size (n, m) where n is the number of companies and
-    m is the length of each embedding.
+    Args:
+        run: Run ID for GlassEmbed flow
+
+    Returns:
+        A 2d array of size (n, m) where n is the number of companies and m is
+        the length of each embedding.
     """
     run = run or get_run("GlassEmbed")
     return run.data.embeddings
 
 
-def embedding_org_ids(run: Optional[Run] = None) -> List[int]:
+def embedded_org_ids(run: Optional[Run] = None) -> List[int]:
     """Gets IDs of embedded Glass organisations."""
-    # run = run or get_run()
     run = run or get_run("GlassEmbed")
-    # step = Step(f"GlassEmbed/{run.id}/start")
     return run.data.org_ids
+
+
+def embedded_org_descriptions(run: Optional[Run] = None) -> List[str]:
+    """Gets descriptions of embedded Glass organisations."""
+    run = run or get_run("GlassEmbed")
+    return run.org_descriptions
+
+
+def encoder_name(run: Optional[Run] = None) -> str:
+    """Gets name of model used to create Glass org embeddings."""
+    run = run or get_run(run)
+    return run.model_name
