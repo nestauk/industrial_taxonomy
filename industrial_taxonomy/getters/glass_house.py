@@ -107,10 +107,29 @@ def embedded_org_ids(run: Optional[Run] = None) -> List[int]:
 def embedded_org_descriptions(run: Optional[Run] = None) -> List[str]:
     """Gets descriptions of embedded Glass organisations."""
     run = run or get_run("GlassEmbed")
-    return run.org_descriptions
+    return run.data.org_descriptions
 
 
 def encoder_name(run: Optional[Run] = None) -> str:
     """Gets name of model used to create Glass org embeddings."""
-    run = run or get_run(run)
-    return run.model_name
+    run = run or get_run("GlassEmbed")
+    return run.data.model_name
+
+
+def qa_tokenized_length_hist_fig(run: Optional[Run] = None) -> str:
+    """Cumulative histogram of tokenized Glass description lengths."""
+    run = run or get_run("GlassEmbedQA")
+    return run.data.tokenized_length_hist_fig
+
+
+def qa_percent_not_truncated(run: Optional[Run] = None) -> str:
+    """Percent of descriptions not truncated by the model max input length."""
+    run = run or get_run("GlassEmbedQA")
+    return run.data.percent_not_truncated
+
+
+def qa_embedding_matches(run: Optional[Run] = None) -> str:
+    """Pairs of Glass organisations matched by the cosine similarity of
+    their embeddings."""
+    run = run or get_run("GlassEmbedQA")
+    return run.data.embedding_matches
