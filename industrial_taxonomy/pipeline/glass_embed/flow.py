@@ -8,18 +8,18 @@ try:  # Hack for type-hints on attributes
 except ImportError:
     pass
 
-MODEL_NAME = "sentence-transformers/multi-qa-MiniLM-L6-cos-v1"
+MODEL_NAME = "sentence-transformers/all-distilroberta-v1"
 
 
 @project(name="industrial_taxonomy")
 class GlassEmbed(FlowSpec):
     """Transform descriptions of fuzzy matched companies into embeddings.
 
-    This uses the multi-qa-MiniLM-L6-cos-v1 transformer model which encodes up
-    to 512 tokens per document and produces embeddings with 384 dimensions.
+    This uses the all-distilroberta-v1 transformer model which encodes up
+    to 512 tokens per document and produces embeddings with 768 dimensions.
     It was chosen as a compromise between speed/size and performance
     according to this comparison chart produced by its creators:
-    https://www.sbert.net/docs/pretrained_models.html#model-overview
+    https://huggingface.co/sentence-transformers/all-distilroberta-v1
 
     The model produces normalised embeddings of length 1, meaning that the dot
     and cosine products are equivalent.
