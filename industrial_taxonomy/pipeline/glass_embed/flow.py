@@ -88,8 +88,6 @@ class GlassEmbed(FlowSpec):
         encoder = SentenceTransformer(self.model_name)
         self.embeddings = encoder.encode(self.org_descriptions)
 
-        del self.org_descriptions
-
         self.next(self.end)
 
     @step
