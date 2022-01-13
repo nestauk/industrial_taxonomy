@@ -43,5 +43,4 @@ python industrial_taxonomy/pipeline/glass_description_ngrams/nlp_flow.py \
 python industrial_taxonomy/pipeline/glass_clusters/flow.py \
 --datastore=s3 \
 --production  run \
---test-mode=False
 ```
