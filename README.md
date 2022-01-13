@@ -9,8 +9,6 @@
   - Setup the conda environment
   - Configure pre-commit
   - Configure metaflow to use AWS
-- Run `gh repo clone martingerlach/hSBM_Topicmodel` inside `industrial_taxonomy/pipeline/glass_clusters` to clone the `topsbm` repo.
-  - (Provisional): Fix bug in the `model` method as documented [here](https://github.com/martingerlach/hSBM_Topicmodel/tree/develop)
 
 ## Features
 

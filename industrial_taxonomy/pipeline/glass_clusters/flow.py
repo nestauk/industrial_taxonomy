@@ -1,8 +1,9 @@
 """Flow to cluster glass companies into text clusters
 """
+import logging
 
 from typing import Dict, List, Tuple
-from metaflow import FlowSpec, JSONType, project, step, Parameter
+from metaflow import FlowSpec, JSONType, current, project, step, Parameter
 from industrial_taxonomy.pipeline.glass_clusters.hSBM_Topicmodel.sbmtm import sbmtm
 
 
@@ -13,7 +14,7 @@ class ClusterGlass(FlowSpec):
 
     Attributes:
         min_sector_size: minimum sector size
-        assigned_shares = share of companies to assign to cluster
+        assigned_shares = number / share of companies to assign to cluster
         sectors: sectors we train the model on
         sectors_corpora: tokenised descriptions by sector
         models: topsbm models we will use for robustness / sanity checks etc
@@ -32,11 +33,15 @@ class ClusterGlass(FlowSpec):
         "min-sector-size", help="minimum sector size", default=1000
     )
 
-    test_mode = Parameter("test-mode", help="Run in test mode", default=True)
+    test_mode = Parameter(
+        "test-mode",
+        help="Run in test mode",
+        default=True,
+    )
 
     assigned_shares = Parameter(
         "assigned-shares",
-        help="share of companies to assign",
+        help="number or share of companies to assign to clusters",
         type=JSONType,
         default='[10,100,500,0.5,"all"]',
     )
@@ -50,21 +55,16 @@ class ClusterGlass(FlowSpec):
     @step
     def make_sector_corpora(self):
         """Make the sector corpora"""
+        from toolz import take
         from industrial_taxonomy.pipeline.glass_clusters.utils import (
             make_sector_corpora,
         )
 
-        sector_corpora = make_sector_corpora(min_sector_size=self.min_sector_size)
+        all_sectors_corpora = make_sector_corpora(min_sector_size=self.min_sector_size)
 
-        all_sectors_corpora = [
-            [sector, corp]
-            for sector, corp in zip(
-                list(sector_corpora.keys()), sector_corpora.values()
-            )
-        ]
-
-        if self.test_mode is True:
-            self.sectors_corpora = all_sectors_corpora[:3]
+        if self.test_mode is True and not current.is_production:
+            self.sectors_corpora = dict(take(3, all_sectors_corpora.items()))
+            logging.info("testing")
         else:
             self.sectors_corpora = all_sectors_corpora
 
@@ -85,8 +85,8 @@ class ClusterGlass(FlowSpec):
             extract_clusters,
         )
 
-        sectors = [corp[0] for corp in self.sectors_corpora]
-        models = [fit_model_sector(corp[1]) for corp in self.sectors_corpora]
+        sectors = list(self.sectors_corpora.keys())
+        models = [fit_model_sector(corp) for corp in self.sectors_corpora.values()]
         clusters = [
             extract_clusters(mod, sect, docs_to_assign=self.input)
             for sect, mod in zip(sectors, models)

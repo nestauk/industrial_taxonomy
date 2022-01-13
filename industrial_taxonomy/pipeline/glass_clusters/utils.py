@@ -71,7 +71,7 @@ def filter_non_matched_comps(
         filtered tokenised descriptions dict
     """
 
-    return {_id: tok for _id, tok in tokenised.items() if _id in matched_ids}
+    return {id_: tok for id_, tok in tokenised.items() if id_ in matched_ids}
 
 
 def sector_tokens_lookup(
@@ -91,7 +91,7 @@ def sector_tokens_lookup(
     """
 
     return {
-        sector: {_id: tok for _id, tok in tokenised.items() if gl_sic4[_id] == sector}
+        sector: {id_: tok for id_, tok in tokenised.items() if gl_sic4[id_] == sector}
         for sector in big_sectors
     }
 
@@ -107,11 +107,11 @@ def make_sector_corpora(min_sector_size: int = 1000) -> Dict[str, List[str]]:
     """
     gl_sic4 = gl_sic4_lookup()
     selected_sectors = set(
-        [
-            sector
-            for sector, sector_n in pd.Series(gl_sic4).value_counts().items()
-            if sector_n > min_sector_size
-        ]
+        # [
+        sector
+        for sector, sector_n in pd.Series(gl_sic4).value_counts().items()
+        if sector_n > min_sector_size
+        # ]
     )
 
     return pipe(

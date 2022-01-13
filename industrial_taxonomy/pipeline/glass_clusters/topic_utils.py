@@ -1,27 +1,10 @@
-# Utilities to fit topics models and
+# Utilities to fit topics models and cluster documents
 
 from typing import List, Tuple, Dict, Union
-from industrial_taxonomy.pipeline.glass_clusters.hSBM_Topicmodel.sbmtm import sbmtm
+from industrial_taxonomy.pipeline.glass_clusters.sbmtm import sbmtm
 
 
-def fit_model(corpus: List[List[str]], doc_ids: List) -> sbmtm:
-    """Trains top sbm model on tokenised corpus
-
-    Args:
-        corpus: list of tokenised documents
-        doc_ids: their ids
-
-    Returns:
-        A topic model fit on the corpus
-    """
-
-    model = sbmtm()
-    model.make_graph(corpus, documents=doc_ids)
-    model.fit()
-    return model
-
-
-def fit_model_sector(sector_corpus: Dict[str, Dict[int, List[str]]]) -> sbmtm:
+def fit_model_sector(sector_corpus: Dict[int, List[str]]) -> sbmtm:
     """Fits the model taking the sector corpus data structure as an input
 
     Args:
@@ -32,9 +15,10 @@ def fit_model_sector(sector_corpus: Dict[str, Dict[int, List[str]]]) -> sbmtm:
         The model
     """
 
-    return fit_model(
-        corpus=list(sector_corpus.values()), doc_ids=list(sector_corpus.keys())
-    )
+    model = sbmtm()
+    model.make_graph(list(sector_corpus.values()), documents=list(sector_corpus.keys()))
+    model.fit()
+    return model
 
 
 def extract_clusters(
