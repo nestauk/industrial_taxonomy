@@ -5,6 +5,8 @@ from metaflow import Run
 
 from industrial_taxonomy import config
 from industrial_taxonomy.utils.metaflow import get_run
+from industrial_taxonomy.utils.utils import reverse_dict
+from industrial_taxonomy.getters.companies_house import get_sector
 
 
 if config is None:
@@ -59,3 +61,21 @@ def get_description_tokens(run: Optional[Run] = None) -> Dict[str, List[str]]:
     """Processed Glass description tokens for which a Companies House match exists."""
     run = run or get_run("GlassNlpFlow")
     return run.data.documents
+
+
+def glass_sic4_lookup() -> dict:
+    """Creates a lookup between glass_ids and 4 digit SIC codes"""
+
+    return (
+        get_sector()
+        .assign(
+            org_id=lambda df: df.index.map(
+                reverse_dict(glass_companies_house_lookup())
+            ),
+            SIC4_CODE=lambda df: df["SIC5_code"].astype(str).slice(stop=-1),
+        )
+        .query("rank == 1")
+        .dropna(axis=0, subset=["org_id"])
+        .set_index("org_id")["SIC4_CODE"]
+        .to_dict()
+    )
