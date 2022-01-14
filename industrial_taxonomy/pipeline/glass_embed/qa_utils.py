@@ -1,5 +1,8 @@
+from typing import List
+from functools import lru_cache
 import numpy as np
 import matplotlib.pyplot as plt
+from metaflow import Flow, Run
 
 
 def _tokenize_full_text(texts, tokenizer):
@@ -45,9 +48,34 @@ def tokenized_length_histogram(lengths, tokenizer):
     return fig
 
 
-def random_sample_idx(x, n_samples):
+def random_sample_idx(x, n_samples, seed=100):
     """Get a random sample of elements from a list-like without replacement."""
     n_total = len(x)
-    rn_gen = np.random.default_rng()
+    rn_gen = np.random.RandomState(seed)
     sample_idx = rn_gen.choice(n_total, size=n_samples, replace=False)
     return sample_idx
+
+
+@lru_cache
+def get_latest_runs_by_model() -> List[Run]:
+    """Gets the last successful production run for each encoder.
+
+    Returns:
+        latest_runs: A list of the last successful production run for each
+            embedding model used.
+    """
+    runs = Flow("GlassEmbed").runs("project_branch:prod")
+
+    _model_names = []
+    latest_runs = []
+    for run in filter(lambda run: run.successful, runs):
+        try:
+            model_name = run.data.model_name
+        except KeyError:
+            continue
+
+        if model_name not in _model_names:
+            latest_runs.append(run)
+            _model_names.append(model_name)
+
+    return latest_runs
