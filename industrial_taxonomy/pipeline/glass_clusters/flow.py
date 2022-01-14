@@ -118,6 +118,8 @@ class ClusterGlass(FlowSpec):
         """Combine branched cluster assignments"""
         from itertools import chain
 
+        self.merge_artifacts(inputs, include=["models"])
+
         self.sectors = set(chain.from_iterable(input.sectors for input in inputs))
 
         self.clusters = {
