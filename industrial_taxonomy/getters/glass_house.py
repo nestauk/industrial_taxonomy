@@ -5,7 +5,7 @@ from metaflow import Run
 
 from industrial_taxonomy import config
 from industrial_taxonomy.utils.metaflow import get_run
-from industrial_taxonomy.utils.utils import reverse_dict
+from industrial_taxonomy.utils.collections import reverse_dict
 from industrial_taxonomy.getters.companies_house import get_sector
 
 

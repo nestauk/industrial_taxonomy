@@ -52,7 +52,7 @@ def extract_clusters(
     sector: str,
     docs_to_assign: Union[int, float, str] = 10,
     cl_level: int = 0,
-) -> List[Tuple[int, str]]:
+) -> List[Tuple[str, int]]:
     """Extracts clusters from the model
 
     Args:

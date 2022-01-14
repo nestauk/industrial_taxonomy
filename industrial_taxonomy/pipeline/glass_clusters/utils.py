@@ -23,6 +23,10 @@ NE_CODES = {
     "TIME",
 }
 
+token_descr = List[str]
+org_id = str
+sic_4 = str
+
 
 def strip_nes(tokenised_dict: Dict[int, List[str]]) -> Dict[int, List[str]]:
     """Removes named entities from company tokenised descriptions"""
@@ -34,8 +38,8 @@ def strip_nes(tokenised_dict: Dict[int, List[str]]) -> Dict[int, List[str]]:
 
 
 def filter_non_matched_comps(
-    tokenised: Dict[int, List[str]], matched_ids: set
-) -> Dict[int, List[str]]:
+    tokenised: Dict[org_id, token_descr], matched_ids: set
+) -> Dict[org_id, token_descr]:
     """Removes tokenised descriptions of glass companies that were not matched with CH
 
     Args:
@@ -49,9 +53,9 @@ def filter_non_matched_comps(
     return {id_: tok for id_, tok in tokenised.items() if id_ in matched_ids}
 
 
-def sector_tokens_lookup(
-    tokenised: Dict[int, List[str]], gl_sic4: Dict[int, str], big_sectors: set
-) -> Dict[int, List[str]]:
+def big_sector_tokens_lookup(
+    tokenised: Dict[org_id, token_descr], gl_sic4: Dict[org_id, sic_4], big_sectors: set
+) -> Dict[sic_4, Dict[org_id, token_descr]]:
     """Creates a dict where keys are (big) sectors and
     values the tokenised descriptions of their companies.
 
@@ -87,9 +91,13 @@ def make_sector_corpora(min_sector_size: int = 1000) -> Dict[str, List[str]]:
         if sector_n > min_sector_size
     )
 
+    tokenised_descriptions = get_description_tokens()
+
     return pipe(
-        get_description_tokens(),
+        tokenised_descriptions,
         strip_nes,
         partial(filter_non_matched_comps, matched_ids=set(glass_sic4.keys())),
-        partial(sector_tokens_lookup, gl_sic4=glass_sic4, big_sectors=selected_sectors),
+        partial(
+            big_sector_tokens_lookup, gl_sic4=glass_sic4, big_sectors=selected_sectors
+        ),
     )

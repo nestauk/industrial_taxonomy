@@ -26,7 +26,7 @@ class ClusterGlass(FlowSpec):
 
     min_sector_size: int
     assigned_shares: List[float]
-    sectors_corpora: List[Dict[str, Dict[str, List[str]]]]
+    sectors_corpora: Dict[str, List[str]]
     sectors: List[str]
     clusters: List[Tuple[int, str]]
     models: Dict[str, Dict[str, sbmtm]]
@@ -58,7 +58,7 @@ class ClusterGlass(FlowSpec):
     def make_sector_corpora(self):
         """Make the sector corpora"""
         from toolz import take
-        from industrial_taxonomy.pipeline.glass_clusters.utils import (
+        from utils import (
             make_sector_corpora,
         )
 
@@ -76,11 +76,10 @@ class ClusterGlass(FlowSpec):
     def fit_topic_models(self):
         """Fits the topic model for each sector"""
 
-        from industrial_taxonomy.pipeline.glass_clusters.topic_utils import (
+        from topic_utils import (
             fit_model_sector,
         )
 
-        self.sectors = list(self.sectors_corpora.keys())
         self.models = {
             sect: fit_model_sector(corp) for sect, corp in self.sectors_corpora.items()
         }
@@ -92,7 +91,7 @@ class ClusterGlass(FlowSpec):
         """Cluster glass descriptions using topsbm
         for each value of the assigned_shares parametre"""
 
-        from industrial_taxonomy.pipeline.glass_clusters.topic_utils import (
+        from topic_utils import (
             extract_clusters,
         )
         from itertools import chain
