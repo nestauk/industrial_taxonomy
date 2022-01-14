@@ -8,7 +8,7 @@ try:  # Hack for type-hints on attributes
 except ImportError:
     pass
 
-MODEL_NAME = "sentence-transformers/all-distilroberta-v1"
+MODEL_NAME = "sentence-transformers/paraphrase-distilroberta-base-v2"
 
 
 @project(name="industrial_taxonomy")
