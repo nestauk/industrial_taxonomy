@@ -1,7 +1,7 @@
 from operator import itemgetter
 from typing import List
 
-from metaflow import FlowSpec, step, pip, project, Parameter, current, conda, conda_base
+from metaflow import FlowSpec, step, pip, project, Parameter, current, conda
 
 from industrial_taxonomy.getters.glass_house import (
     description_embeddings,
