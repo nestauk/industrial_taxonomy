@@ -95,7 +95,7 @@ class GlassEmbedQA(FlowSpec):
         model_runs = get_latest_runs_by_model()
 
         self.embedding_matches = {
-            org_ids[sid]: {"sample_description": descriptions[sid]}
+            org_ids[sid]: {"sample_glass_description": descriptions[sid]}
             for sid in sample_idx
         }
         for run in model_runs:
@@ -111,16 +111,15 @@ class GlassEmbedQA(FlowSpec):
             distances = distances[:, 1]  # nearest neighbours that aren't self
             nearest_neighbours_idx = nearest_neighbours_idx[:, 1]
 
-        for sample_id, nearest_id, dist in zip(
-            sample_idx, nearest_neighbours_idx, distances
-        ):
-            org_id = org_ids[sample_id]
-            self.embedding_matches[org_id][model_name] = {
-                "nearest_glass_org_id": org_ids[nearest_id],
-                "sample_glass_description": descriptions[sample_id],
-                "nearest_glass_description": descriptions[nearest_id],
-                "distance": dist,
-            }
+            for sample_id, nearest_id, dist in zip(
+                sample_idx, nearest_neighbours_idx, distances
+            ):
+                org_id = org_ids[sample_id]
+                self.embedding_matches[org_id][model_name] = {
+                    "nearest_glass_org_id": org_ids[nearest_id],
+                    "nearest_glass_description": descriptions[nearest_id],
+                    "distance": dist,
+                }
         self.next(self.end)
 
     @step
