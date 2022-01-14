@@ -9,17 +9,19 @@ from industrial_taxonomy.pipeline.glass_clusters.hSBM_Topicmodel.sbmtm import sb
 
 @project(name="industrial_taxonomy")
 class ClusterGlass(FlowSpec):
-    """Create sectoral corpora of glass descriptions
-    and cluster them into text sectors
+    """We select sectors above a minimum doc (company) size and
+    cluster the company inside them based on their descriptions using
+    the stochastic block-model topic model.
 
     Attributes:
         min_sector_size: minimum sector size
-        assigned_shares = number / share of companies to assign to cluster
+        assigned_shares: number / share of companies to assign to cluster
         sectors: sectors we train the model on
         sectors_corpora: tokenised descriptions by sector
         models: topsbm models we will use for robustness / sanity checks etc
         clusters: lookup between company ids and clusters they are assigned to
-            clusters are named as {SIC_4 the company belongs to}_{topsbm cluster id}
+            clusters are named as {SIC_4 the company belongs to}_{topsbm cluster id}.
+                This is main output we will be using downstream
     """
 
     min_sector_size: int
@@ -63,36 +65,51 @@ class ClusterGlass(FlowSpec):
         all_sectors_corpora = make_sector_corpora(min_sector_size=self.min_sector_size)
 
         if self.test_mode is True and not current.is_production:
-            self.sectors_corpora = dict(take(3, all_sectors_corpora.items()))
+            self.sectors_corpora = dict(take(2, all_sectors_corpora.items()))
             logging.info("testing")
         else:
             self.sectors_corpora = all_sectors_corpora
 
-        self.next(self.start_parallel_clustering)
+        self.next(self.fit_topic_models)
 
     @step
-    def start_parallel_clustering(self):
-        """Creates a branch for every assignment share value"""
+    def fit_topic_models(self):
+        """Fits the topic model for each sector"""
+
+        from industrial_taxonomy.pipeline.glass_clusters.topic_utils import (
+            fit_model_sector,
+        )
+
+        self.sectors = list(self.sectors_corpora.keys())
+        self.models = {
+            sect: fit_model_sector(corp) for sect, corp in self.sectors_corpora.items()
+        }
 
         self.next(self.cluster_glass_descriptions, foreach="assigned_shares")
 
     @step
     def cluster_glass_descriptions(self):
-        """Cluster glass descriptions using topsbm"""
+        """Cluster glass descriptions using topsbm
+        for each value of the assigned_shares parametre"""
 
         from industrial_taxonomy.pipeline.glass_clusters.topic_utils import (
-            fit_model_sector,
             extract_clusters,
         )
+        from itertools import chain
 
-        sectors = list(self.sectors_corpora.keys())
-        models = [fit_model_sector(corp) for corp in self.sectors_corpora.values()]
-        clusters = [
-            extract_clusters(mod, sect, docs_to_assign=self.input)
-            for sect, mod in zip(sectors, models)
-        ]
-
-        self.outputs = [sectors, models, clusters]
+        self.sectors = list(self.sectors_corpora.keys())
+        self.clusters = {
+            f"assigned_{self.input}": list(
+                chain(
+                    *[
+                        extract_clusters(
+                            self.models[sect], sect, docs_to_assign=self.input
+                        )
+                        for sect in self.sectors
+                    ]
+                )
+            )
+        }
 
         self.next(self.join_clusters)
 
@@ -101,27 +118,19 @@ class ClusterGlass(FlowSpec):
         """Combine branched cluster assignments"""
         from itertools import chain
 
-        # Sectors are the same for all assignment strategies
-        self.sectors = set(chain(*[input.outputs[0] for input in inputs]))
-
-        self.models = {
-            f"assigned_{str(param)}": {
-                sector: model
-                for sector, model in zip(input.outputs[0], input.outputs[1])
-            }
-            for param, input in zip(self.assigned_shares, inputs)
-        }
+        self.sectors = set(chain.from_iterable(input.sectors for input in inputs))
 
         self.clusters = {
-            f"assigned_{str(param)}": list(chain(*[cl for cl in input.outputs[2]]))
-            for param, input in zip(self.assigned_shares, inputs)
+            assg_n: dict_
+            for input in inputs
+            for assg_n, dict_ in input.clusters.items()
         }
 
         self.next(self.end)
 
     @step
     def end(self):
-        """Save outputs"""
+        """End flow"""
         pass
 
 

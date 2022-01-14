@@ -64,7 +64,7 @@ def get_description_tokens(run: Optional[Run] = None) -> Dict[str, List[str]]:
 
 
 def glass_sic4_lookup() -> dict:
-    """Creates a lookup between glass_ids and 4 digit SIC codes"""
+    """Creates a lookup between glass_ids and the first ranked 4 digit SIC codes"""
 
     return (
         get_sector()
@@ -72,7 +72,7 @@ def glass_sic4_lookup() -> dict:
             org_id=lambda df: df.index.map(
                 reverse_dict(glass_companies_house_lookup())
             ),
-            SIC4_CODE=lambda df: df["SIC5_code"].astype(str).slice(stop=-1),
+            SIC4_CODE=lambda df: df["SIC5_code"].str.slice(stop=-1),
         )
         .query("rank == 1")
         .dropna(axis=0, subset=["org_id"])
