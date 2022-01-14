@@ -13,6 +13,7 @@ from qa_utils import (
     token_count,
     tokenized_length_histogram,
     random_sample_idx,
+    get_latest_runs_by_model,
 )
 
 
@@ -87,33 +88,39 @@ class GlassEmbedQA(FlowSpec):
         """
         import faiss
 
-        embeddings = description_embeddings()[: self.nrows]
-        descriptions = embedded_org_descriptions()[: self.nrows]
         org_ids = embedded_org_ids()[: self.nrows]
+        descriptions = embedded_org_descriptions()[: self.nrows]
+        sample_idx = random_sample_idx(org_ids, 100)
 
-        dimensions = embeddings.shape[1]
-        index = faiss.IndexFlatIP(dimensions)
-        index.add(embeddings)
+        model_runs = get_latest_runs_by_model()
 
-        sample_idx = random_sample_idx(embeddings, 100)
+        self.embedding_matches = {
+            org_ids[sid]: {"sample_description": descriptions[sid]}
+            for sid in sample_idx
+        }
+        for run in model_runs:
 
-        distances, nearest_neighbours_idx = index.search(embeddings[sample_idx], 2)
-        distances = distances[:, 1]  # nearest neighbours that aren't self
-        nearest_neighbours_idx = nearest_neighbours_idx[:, 1]
+            embeddings = description_embeddings(run)[: self.nrows]
+            model_name = encoder_name(run)
 
-        self.embedding_matches = []
+            dimensions = embeddings.shape[1]
+            index = faiss.IndexFlatIP(dimensions)
+            index.add(embeddings)
+
+            distances, nearest_neighbours_idx = index.search(embeddings[sample_idx], 2)
+            distances = distances[:, 1]  # nearest neighbours that aren't self
+            nearest_neighbours_idx = nearest_neighbours_idx[:, 1]
+
         for sample_id, nearest_id, dist in zip(
             sample_idx, nearest_neighbours_idx, distances
         ):
-            self.embedding_matches.append(
-                {
-                    "sample_glass_org_id": org_ids[sample_id],
-                    "nearest_glass_org_id": org_ids[nearest_id],
-                    "sample_glass_description": descriptions[sample_id],
-                    "nearest_glass_description": descriptions[nearest_id],
-                    "distance": dist,
-                }
-            )
+            org_id = org_ids[sample_id]
+            self.embedding_matches[org_id][model_name] = {
+                "nearest_glass_org_id": org_ids[nearest_id],
+                "sample_glass_description": descriptions[sample_id],
+                "nearest_glass_description": descriptions[nearest_id],
+                "distance": dist,
+            }
         self.next(self.end)
 
     @step
