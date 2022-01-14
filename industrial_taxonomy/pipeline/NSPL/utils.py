@@ -85,10 +85,8 @@ def read_nspl_data(
     )
 
     nspl_data = nspl_data.reset_index()
+    nspl_data.index = nspl_data["laua"]
     nspl_data.rename(columns={"laua": "laua_code"}, inplace=True)
-    nspl_data = nspl_data.set_index("laua_code")
-    ##########no error when line 74 and 76 is removed but it's needed.##
-    ########## I think these lines conflicts with data quality step on flow.py and dowload_zip function on utils.py##
     return nspl_data
 
 
@@ -97,7 +95,12 @@ def read_nspl_data(
 
 def nspl_joined(data1: pd.DataFrame, data2: pd.DataFrame) -> pd.DataFrame:
 
-    return pd.merge(data1, data2, how="left", on="laua_code")
+    return pd.merge(data1, data2, how="left", on="laua")
+
+
+def resetting_index(data1: pd.DataFrame) -> pd.DataFrame:
+
+    return data1.set_index("pcds")
 
 
 def read_laua_names(
@@ -112,9 +115,8 @@ def read_laua_names(
     # Get code (CD) column name, e.g. LAD20CD.
     # Done dynamically because LAD year may change
     code_column_name = data.columns[data.columns.str.contains("CD")][0]
-    data.rename(columns={"LAD20CD": "laua_code", "LAD20NM": "laua_name"}, inplace=True)
-    data = data.reset_index()
-    data = data.set_index("laua_code")
+    data.rename(columns={"LAD20CD": "laua", "LAD20NM": "laua_name"}, inplace=True)
+    data = data.set_index("laua")
 
     return data
 
