@@ -15,7 +15,6 @@ LOOSE_UK_BOUNDS = {
     "long": (-7.6, 1.7),
     "lat": (50.0, 58.7),
 }  # Rough bounds of UK, ok for DQ check
-#
 
 
 def find_download_url(driver: WebDriver, geo_portal_url: str) -> str:
@@ -25,7 +24,6 @@ def find_download_url(driver: WebDriver, geo_portal_url: str) -> str:
     return driver.find_element_by_link_text("Download").get_attribute("href")
 
 
-#
 def chrome_driver() -> WebDriver:
     """Headless Selenium Chrome Driver."""
     chrome_options = Options()
@@ -39,9 +37,6 @@ def chrome_driver() -> WebDriver:
     driver.set_page_load_timeout(10)
     driver.set_script_timeout(10)
     return driver
-
-
-#
 
 
 def filter_nspl_data(data: pd.DataFrame) -> pd.DataFrame:
@@ -62,7 +57,6 @@ def download_zip(url: str) -> ZipFile:
     return ZipFile(BytesIO(response.content), "r")
 
 
-#
 def read_nspl_data(
     zipfile: ZipFile,
     nrows: Optional[int] = None,
@@ -88,9 +82,6 @@ def read_nspl_data(
     nspl_data.index = nspl_data["laua"]
     nspl_data.rename(columns={"laua": "laua_code"}, inplace=True)
     return nspl_data
-
-
-#
 
 
 def nspl_joined(data1: pd.DataFrame, data2: pd.DataFrame) -> pd.DataFrame:
@@ -121,7 +112,6 @@ def read_laua_names(
     return data
 
 
-#
 def get_nspl_csv_zip_path(zipfile: ZipFile) -> str:
     """Get the path within the zip folder to the NSPL CSV lookup."""
     return next(
@@ -132,7 +122,6 @@ def get_nspl_csv_zip_path(zipfile: ZipFile) -> str:
     )
 
 
-#
 def get_laua_csv_zip_path(zipfile: ZipFile) -> str:
     """Get the path within the zip folder to the LAUA CSV lookup."""
     return next(

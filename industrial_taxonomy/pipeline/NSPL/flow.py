@@ -127,20 +127,20 @@ class NsplLookup(FlowSpec):
         # Postcode validity
         # Choose very simple postcode verification as NSPL is a fairly
         # authoritative source that may update faster than a precise regex
-        #    POSTCODE_REGEX = r"^([A-Z]{1,2}[A-Z\d]{0,2}? ?\d[A-Z]{2})$"
-        #    valid_pcds = self.nspl_data.index.str.match(POSTCODE_REGEX)
-        #    if not valid_pcds.all():
-        #        raise AssertionError(
-        #            "Invalid postcodes detected: "
-        #            f"{self.nspl_data.loc[~valid_pcds].index.values}"
-        #        )
+        POSTCODE_REGEX = r"^([A-Z]{1,2}[A-Z\d]{0,2}? ?\d[A-Z]{2})$"
+        valid_pcds = self.nspl_data.pcds.str.match(POSTCODE_REGEX)
+        if not valid_pcds.all():
+            raise AssertionError(
+                "Invalid postcodes detected: "
+                f"{self.nspl_data.loc[~valid_pcds].pcds.values}"
+            )
 
-        # Check we have names for all laua codes
-        # nspl_laua_cds = set(self.nspl_data.laua_code.dropna())
-        # laua_names_cds = set(self.laua_names.keys())
-        # laua_diff = nspl_laua_cds - laua_names_cds
-        # if len(laua_diff) > 0:
-        #   raise AssertionError(f"LAUA do not match: {laua_diff}")
+        # ßCheck we have names for all laua codes
+        nspl_laua_cds = set(self.nspl_data.laua_code.dropna())
+        laua_names_cds = set(self.laua_names.index)
+        laua_diff = nspl_laua_cds - laua_names_cds
+        if len(laua_diff) > 0:
+            raise AssertionError(f"LAUA do not match: {laua_diff}")
         #######lines 147 and 148 caused an error which state that the rows arent equal however would this be solved with the join? ##
 
         ### Once the current error is solved i will add these lines back in but change it to work with the current adjusted dataframe.
