@@ -38,7 +38,6 @@ class Groupby:
         agg = np.array([unique_keys, np.array(agg)])
         return agg
 
-
 def find_knn(
     embeddings: npt.NDArray,
     index, # FAISS index
