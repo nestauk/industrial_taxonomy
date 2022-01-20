@@ -33,7 +33,6 @@ class NsplLookup(FlowSpec):
         geoportal_url: Full URL of dataset in gov.uk geoportal
         download_url: Download URL of dataset
         laua_names: Lookup from laua code to name
-        laua_year: Year LAUA names and codes correspond to
         pcd_laua: Lookup from postcode to LAUA
         pcd_latlong: Lookup from postcode to latitude and longitude
     """
@@ -56,9 +55,7 @@ class NsplLookup(FlowSpec):
     geoportal_url: str
     download_url: str
     laua_names: Dict[laua_code, laua_name]
-    laua_year: int
     pcd_laua: Dict[postcode, laua_code]
-    # pcd_latlong: Dict[postcode, Dict[Literal["lat", "long"], float]]
 
     @step
     def start(self):
@@ -98,17 +95,15 @@ class NsplLookup(FlowSpec):
         if not current.is_production:
             requests_cache.install_cache("nspl_zip_cache")
         with download_zip(self.download_url) as zipfile:
+
             # Load main postcode lookup
             self.nspl_data = read_nspl_data(zipfile, nrows).pipe(filter_nspl_data)
 
             # LAUA lookup from codes to names
-            laua_names_tmp = read_laua_names(zipfile)
+            self.laua_names = read_laua_names(zipfile)
 
-            self.laua_names = laua_names_tmp
+            # joining nspl_names with nspl_data on corresponding laua_code
             self.nspl_linked = nspl_joined(self.nspl_data, self.laua_names)
-            print(self.nspl_linked)
-            print(self.laua_names)
-            print(self.nspl_data.columns)
 
         self.next(self.data_quality)
 
@@ -116,8 +111,6 @@ class NsplLookup(FlowSpec):
     def data_quality(self):
         """Data quality checks."""
         from utils import LOOSE_UK_BOUNDS
-
-        print(type(self.nspl_data))
 
         # Null checks
         has_nulls = self.nspl_data.isnull().sum().sum() > 0
@@ -135,15 +128,13 @@ class NsplLookup(FlowSpec):
                 f"{self.nspl_data.loc[~valid_pcds].pcds.values}"
             )
 
-        # ßCheck we have names for all laua codes
+        # Check we have names for all laua codes
         nspl_laua_cds = set(self.nspl_data.laua_code.dropna())
         laua_names_cds = set(self.laua_names.index)
         laua_diff = nspl_laua_cds - laua_names_cds
         if len(laua_diff) > 0:
             raise AssertionError(f"LAUA do not match: {laua_diff}")
-        #######lines 147 and 148 caused an error which state that the rows arent equal however would this be solved with the join? ##
 
-        ### Once the current error is solved i will add these lines back in but change it to work with the current adjusted dataframe.
         self.next(self.end)
 
     @step
@@ -153,7 +144,6 @@ class NsplLookup(FlowSpec):
 
         index_reset = resetting_index(self.nspl_linked)
         self.nspl_dataframe = index_reset.to_dict(orient="index")
-        print(self.nspl_dataframe)
 
 
 if __name__ == "__main__":

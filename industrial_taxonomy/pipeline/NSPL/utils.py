@@ -103,9 +103,9 @@ def read_laua_names(
         # Ignore Welsh name column
         usecols=lambda name: not name.endswith("W"),
     )
-    # Get code (CD) column name, e.g. LAD20CD.
-    # Done dynamically because LAD year may change
+
     code_column_name = data.columns[data.columns.str.contains("CD")][0]
+
     data.rename(columns={"LAD20CD": "laua", "LAD20NM": "laua_name"}, inplace=True)
     data = data.set_index("laua")
 
