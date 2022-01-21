@@ -1,6 +1,6 @@
 """Flow to cluster glass companies into text clusters
 """
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 from metaflow import FlowSpec, JSONType, current, project, step, Parameter
 from industrial_taxonomy.pipeline.glass_clusters.sbmtm import sbmtm
 
@@ -25,7 +25,7 @@ class ClusterGlass(FlowSpec):
     """
 
     min_sector_size: int
-    assigned_shares: List[float, str]
+    assigned_shares: List[Union[float, str]]
     sectors_corpora: Dict[str, Dict[int, List[str]]]
     sectors: List[str]
     clusters: Dict[str, List[Tuple[str, str]]]
