@@ -25,7 +25,7 @@ class ClusterGlass(FlowSpec):
     """
 
     min_sector_size: int
-    assigned_shares: List[float]
+    assigned_shares: List[float, str]
     sectors_corpora: Dict[str, Dict[int, List[str]]]
     sectors: List[str]
     clusters: Dict[str, List[Tuple[str, str]]]
