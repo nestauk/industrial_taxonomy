@@ -4,8 +4,6 @@ from functools import partial
 from typing import Dict, List
 import pandas as pd
 
-from industrial_taxonomy.getters.glass_house import get_description_tokens
-
 NE_CODES = {
     "CARDINAL",
     "DATE",
@@ -73,12 +71,15 @@ def big_sector_tokens_lookup(
 
 
 def make_sector_corpora(
-    glass_sic4: Dict[int, str], min_sector_size: int = 1000
+    glass_sic4: Dict[int, str],
+    token_descr: Dict[org_id, token_descr],
+    min_sector_size: int = 1000,
 ) -> Dict[str, Dict[int, List[str]]]:
     """Creates a dict of sectors and the tokenised descriptions of their companies
 
     Args:
         glass_sic4: lookup between glass ids and sic4s
+        token_descr: lookup between glass ids and tokenised descriptions
         min_sector_size: minimum sector size
 
     Returns:
@@ -90,10 +91,8 @@ def make_sector_corpora(
         if sector_n > min_sector_size
     )
 
-    tokenised_descriptions = get_description_tokens()
-
     return pipe(
-        tokenised_descriptions,
+        token_descr,
         strip_nes,
         partial(filter_non_matched_comps, matched_ids=set(glass_sic4.keys())),
         partial(
