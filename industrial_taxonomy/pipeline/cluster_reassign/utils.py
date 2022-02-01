@@ -50,8 +50,8 @@ def find_knn()
         query_embeddings = itemgetter(*org_ids_chunk)(org_id_to_embedding_lookup)
 
 
-    
-    
+
+
     dists, nearest_ids = self.index.search(query_embeddings, K + 1)
     dists = dists[:, 1:]
     nearest_ids = nearest_ids[:, 1:]

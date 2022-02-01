@@ -26,7 +26,7 @@ K = 20
 
 
 @conda_base(
-    python="3.8", 
+    python="3.8",
     libraries={
         "pytorch::faiss": "1.7.2",
         "scikit-learn": "1.0.2",
@@ -64,7 +64,7 @@ class ClusterReassignFlow(FlowSpec):
 
     @step
     def silhouette_pre_reassign(self):
-        """Calculate sample silhouette score for Glass orgs based on cluster 
+        """Calculate sample silhouette score for Glass orgs based on cluster
         IDs before reassignment.
         """
         from sklearn.metrics import silhouette_samples
@@ -121,7 +121,7 @@ class ClusterReassignFlow(FlowSpec):
         self.next(self.end)
 
     def silhouette_post_reassign(self):
-        """"Calculate sample silhouette score for Glass orgs based on cluster 
+        """"Calculate sample silhouette score for Glass orgs based on cluster
         IDs after reassignment.
         """
         from sklearn.metrics import silhouette_samples
