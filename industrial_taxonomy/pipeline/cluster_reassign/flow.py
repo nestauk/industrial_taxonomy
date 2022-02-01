@@ -123,6 +123,19 @@ class ClusterReassignFlow(FlowSpec):
         )
         self.next(self.end)
 
+    def silhouette_post_reassign(self):
+        """"Calculate sample silhouette score for Glass orgs based on cluster 
+        IDs after reassignment.
+        """
+        from sklearn.metrics import silhouette_samples
+
+        self.silhouette_before = silhouette_samples(
+            self.glass_org_embeddings,
+            self.clusters_reassigned,
+            metric="cosine"
+        )
+        self.next(self.end)
+
     @step
     def end(self):
         """No-op."""
