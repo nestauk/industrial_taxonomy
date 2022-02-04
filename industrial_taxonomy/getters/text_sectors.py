@@ -36,3 +36,11 @@ def topsbm_models(run: Optional[Run] = None) -> Dict[sector_id, sbmtm]:
     """Gets topic models trained on each sector"""
     run = run or get_run("ClusterGlass")
     return run.data.models
+
+
+def clustered_sectors(run: Optional[Run] = None) -> List[str]:
+    """Get the sectors where we performed the clustering"""
+
+    run = run or get_run("ClusterGlass")
+
+    return run.data.sectors

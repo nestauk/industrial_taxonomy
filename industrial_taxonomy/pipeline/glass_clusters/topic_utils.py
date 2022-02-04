@@ -1,5 +1,6 @@
 # Utilities to fit topics models and cluster documents
 
+from pandas import DataFrame
 from typing import List, Tuple, Dict, Union
 from industrial_taxonomy.pipeline.glass_clusters.sbmtm import sbmtm
 
@@ -70,3 +71,17 @@ def extract_clusters(
     cluster_assignment = model.clusters(l=cl_level, n=extract_n)
 
     return [(f"{sector}_{k}", el[0]) for k, v in cluster_assignment.items() for el in v]
+
+
+def extract_topic_mix(model: sbmtm) -> DataFrame:
+    """Extracts a model's topic mix
+
+    Args:
+        model: topsbm model we want to extract the topic mix from
+
+    Returns:
+        topic distribution for all documents in the sector
+        at the lowest level of the topic hierarchy
+    """
+
+    return DataFrame(model.get_groups(l=0)["p_tw_d"].T, index=model.documents)
