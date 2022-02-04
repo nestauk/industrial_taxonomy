@@ -81,7 +81,7 @@ def get_sector(run: Optional[Run] = None) -> DataFrame:
         .drop_duplicates(["company_number", "rank"], keep="last")
         .rename(columns={"sector_id": "SIC5_code"})
         .drop("date", 1)
-        .astype({"company_number": str, "rank": int, "SIC5_code": int})
+        .astype({"company_number": str, "rank": int, "SIC5_code": str})
         .set_index("company_number")
     )
 
