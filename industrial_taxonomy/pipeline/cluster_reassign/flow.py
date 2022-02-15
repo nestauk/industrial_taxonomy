@@ -1,6 +1,4 @@
 import numpy as np
-from operator import itemgetter
-from toolz.itertoolz import partition_all
 
 from metaflow import (
     conda_base,
@@ -11,18 +9,18 @@ from metaflow import (
     step,
 )
 
+from industrial_taxonomy.getters.text_sectors import text_sectors
 from industrial_taxonomy.getters.glass_embed import (
     glass_description_embeddings,
     org_ids,
 )
-from industrial_taxonomy.getters.cluster import (
-    cluster_ids,
-)  # TODO change this to match Juan's code
 
-from utils import Groupby
-
+from utils import find_knn, assign_knn_cluster
 
 K = 20
+INDEX_SEARCH_CHUNK_SIZE = 10_000
+REASSIGN_AGG_FUNC = np.median
+MIN_REASSIGN_DIST = 0.8
 
 
 @conda_base(
@@ -30,7 +28,7 @@ K = 20
     libraries={
         "pytorch::faiss": "1.7.2",
         "scikit-learn": "1.0.2",
-        }
+    },
 )
 @project(name="industrial_taxonomy")
 class ClusterReassignFlow(FlowSpec):
@@ -58,23 +56,18 @@ class ClusterReassignFlow(FlowSpec):
 
         self.glass_org_embeddings = glass_description_embeddings()[:n_samples]
         self.glass_org_ids = org_ids()[:n_samples]
-        self.clusters = glass_cluster_ids()[:n_samples]
 
-        self.next(self.silhouette_pre_reassign)
-
-    @step
-    def silhouette_pre_reassign(self):
-        """Calculate sample silhouette score for Glass orgs based on cluster
-        IDs before reassignment.
-        """
-        from sklearn.metrics import silhouette_samples
-
-        self.silhouette_before = silhouette_samples(
-            self.glass_org_embeddings,
-            self.clusters,
-            metric="cosine"
-        )
-        self.next(generate_index)
+        self.clusters = {}
+        for param, clusters in text_sectors.items():
+            clusters = dict(clusters)
+            clusters = {
+                org_id: clusters[org_id]
+                for org_id in clusters.keys() & set(self.org_ids)
+            }
+            self.clusters[param] = clusters
+        # convert code below to work with dict inputs
+        # remove silhouette pre reassign
+        self.next(self.generate_index)
 
     @step
     def generate_index(self):
@@ -91,33 +84,30 @@ class ClusterReassignFlow(FlowSpec):
     def reassign_companies(self):
         """Queries FAISS index for the K nearest neighbours to each company
         given an embedding of its Glass description. Assigns a cluster label
-        based on the labels of the nearest neighbours."""
-        import faiss
-
-        self.clusters_reassigned = []
-        org_id_to_embedding_lookup = dict(
-            zip(self.glass_org_ids, self.glass_org_embeddings)
+        based on the labels of the nearest neighbours.
+        """
+        knn = find_knn(
+            self.glass_org_embeddings,
+            self.index,
+            k=K,
+            chunk_size=INDEX_SEARCH_CHUNK_SIZE,
         )
-        org_id_to_cluster_id_lookup = dict(self.clusters)
-        index_to_org_id_lookup = dict(enumerate(self.org_ids))
 
-        for cluster_chunk in partition_all(10_000, self.clusters):
-            org_ids_chunk = [c[0] for c in cluster_chunk]
-            query_embeddings = itemgetter(*org_ids_chunk)(org_id_to_embedding_lookup)
-            dists, nearest_ids = self.index.search(query_embeddings, K + 1)
-            dists = dists[:, 1:]
-            nearest_ids = nearest_ids[:, 1:]
+        index_id_to_cluster_lookup = dict(
+            (i, c) for i, (_, c) in enumerate(self.clusters)
+        )
 
-            for org_id, nearest, dist in zip(org_ids_chunk, nearest_ids, dists):
-                nearest_cluster_ids = itemgetter(
-                    *itemgetter(*nearest)(index_to_org_id_lookup)
-                )(org_id_to_cluster_id_lookup)
-                gb = Groupby(nearest_cluster_ids, dist)
-                aggregated = gb.groupby_apply(np.mean)
-                best_cluster = aggregated[:, 0][np.argmax(aggregated[:, 1])]
+        knn_clusters = assign_knn_cluster(
+            knn,
+            index_id_to_cluster_lookup,
+            REASSIGN_AGG_FUNC,
+            MIN_REASSIGN_DIST,
+        )
 
-                self.clusters_reassigned.append((org_id, best_cluster))
-
+        index_id_to_glass_id_lookup = dict(enumerate(self.glass_org_ids))
+        self.clusters_reassigned = [
+            (index_id_to_glass_id_lookup[i], c) for i, c in knn_clusters
+        ]
         self.next(self.end)
 
     def silhouette_post_reassign(self):
