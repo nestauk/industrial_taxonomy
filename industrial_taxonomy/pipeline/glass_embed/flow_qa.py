@@ -1,5 +1,5 @@
 from operator import itemgetter
-from typing import List
+from qa_utils import get_nearest_neighbour
 
 from metaflow import FlowSpec, step, pip, project, Parameter, current, conda
 
@@ -90,14 +90,10 @@ class GlassEmbedQA(FlowSpec):
 
         org_ids = embedded_org_ids()[: self.nrows]
         descriptions = embedded_org_descriptions()[: self.nrows]
-        sample_idx = random_sample_idx(org_ids, 100)
-
+        sample_ids = random_sample_idx(org_ids, 100)
         model_runs = get_latest_runs_by_model()
 
-        self.embedding_matches = {
-            org_ids[sid]: {"sample_glass_description": descriptions[sid]}
-            for sid in sample_idx
-        }
+        self.embedding_matches = {}
         for run in model_runs:
 
             embeddings = description_embeddings(run)[: self.nrows]
@@ -107,19 +103,21 @@ class GlassEmbedQA(FlowSpec):
             index = faiss.IndexFlatIP(dimensions)
             index.add(embeddings)
 
-            distances, nearest_neighbours_idx = index.search(embeddings[sample_idx], 2)
-            distances = distances[:, 1]  # nearest neighbours that aren't self
-            nearest_neighbours_idx = nearest_neighbours_idx[:, 1]
+            for sample_id in sample_ids:
 
-            for sample_id, nearest_id, dist in zip(
-                sample_idx, nearest_neighbours_idx, distances
-            ):
                 org_id = org_ids[sample_id]
+                if org_id not in self.embedding_matches:
+                    self.embedding_matches[org_id] = {
+                        "sample_glass_description": descriptions[sample_id]
+                    }
+
+                nn_id, dist = get_nearest_neighbour(index, embeddings[sample_id])
                 self.embedding_matches[org_id][model_name] = {
-                    "nearest_glass_org_id": org_ids[nearest_id],
-                    "nearest_glass_description": descriptions[nearest_id],
+                    "nearest_glass_org_id": org_ids[nn_id],
+                    "nearest_glass_description": descriptions[nn_id],
                     "distance": dist,
                 }
+
         self.next(self.end)
 
     @step
