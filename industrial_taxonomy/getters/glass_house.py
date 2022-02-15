@@ -3,6 +3,7 @@ from typing import Dict, List, Optional, TypedDict
 
 from metaflow import Run
 import numpy.typing as npt
+from matplotlib.figure import Figure
 
 from industrial_taxonomy import config
 from industrial_taxonomy.utils.metaflow import get_run
@@ -116,19 +117,19 @@ def encoder_name(run: Optional[Run] = None) -> str:
     return run.data.model_name
 
 
-def qa_tokenized_length_hist_fig(run: Optional[Run] = None) -> str:
+def qa_tokenized_length_hist_fig(run: Optional[Run] = None) -> Figure:
     """Cumulative histogram of tokenized Glass description lengths."""
     run = run or get_run("GlassEmbedQA")
     return run.data.tokenized_length_hist_fig
 
 
-def qa_percent_not_truncated(run: Optional[Run] = None) -> str:
+def qa_percent_not_truncated(run: Optional[Run] = None) -> float:
     """Percent of descriptions not truncated by the model max input length."""
     run = run or get_run("GlassEmbedQA")
     return run.data.percent_not_truncated
 
 
-def qa_embedding_matches(run: Optional[Run] = None) -> str:
+def qa_embedding_matches(run: Optional[Run] = None) -> Dict:
     """Pairs of Glass organisations matched by the cosine similarity of
     their embeddings."""
     run = run or get_run("GlassEmbedQA")
