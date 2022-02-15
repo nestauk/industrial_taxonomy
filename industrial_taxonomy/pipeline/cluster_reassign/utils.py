@@ -46,7 +46,7 @@ def find_knn(
     chunk_size: Optional[int] = None,
     ) -> List[Tuple[npt.NDArray, npt.NDArray]]:
     """Gets the k nearest neighbours to a set of embeddings from an index.
-    
+
     Args:
         embeddings: 2-d array of embeddings.
         index: A 'trained' `faiss` index.
@@ -55,8 +55,8 @@ def find_knn(
             chunks of this size.
 
     Returns:
-        knn_ids: 2-d array of the index IDs of the k nearest 
-        dists: Cosine distances of from 
+        knn_ids: 2-d array of the index IDs of the k nearest
+        dists: Cosine distances of from
     """
     knn = []
     for embedding_chunk in partition_all(chunk_size, embeddings):
@@ -67,22 +67,22 @@ def find_knn(
 
 
 def assign_knn_cluster(
-    knn: List[Tuple[npt.NDArray, npt.NDArray]], 
-    id_cluster_lookup: Dict[int, int], 
-    agg_func: Callable, 
+    knn: List[Tuple[npt.NDArray, npt.NDArray]],
+    id_cluster_lookup: Dict[int, int],
+    agg_func: Callable,
     min_agg_distance: float,
     ) -> List[Tuple[int, str]]:
-    """Finds the cluster with the smallest average distance from a set of K 
+    """Finds the cluster with the smallest average distance from a set of K
     nearest neighbours.
 
     Args:
-        knn: List of array tuples containing the nearest neighbour IDs and 
+        knn: List of array tuples containing the nearest neighbour IDs and
             distances.
-        id_cluster_lookup: Dictionary lookup from index IDs to to cluster 
+        id_cluster_lookup: Dictionary lookup from index IDs to to cluster
             labels.
-        agg_func: A `numpy` function passed to `Groupby` to calculate the 
+        agg_func: A `numpy` function passed to `Groupby` to calculate the
             aggregate distance to nearest neighbour clusters.
-        min_agg_distance: If the aggregate distance to nearest cluster is less 
+        min_agg_distance: If the aggregate distance to nearest cluster is less
             than this, then samples are assigned to their existing cluster.
 
     Returns:
@@ -102,4 +102,3 @@ def assign_knn_cluster(
             nearest_clusters.append((sample_id, id_cluster_lookup[sample_id]))
 
     return nearest_clusters
-
