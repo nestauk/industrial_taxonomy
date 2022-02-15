@@ -56,6 +56,16 @@ def random_sample_idx(x, n_samples, seed=100):
     return sample_idx
 
 
+def get_nearest_neighbour(index, embedding):
+    """Gets the single nearest neighbours to a series of embeddings from a
+    faiss index."""
+    embedding = np.array([embedding])
+    dists, nn_ids = index.search(embedding, 2)
+    dist = dists[0, 1]  # nearest neighbours that aren't self
+    nn_id = nn_ids[0, 1]
+    return nn_id, dist
+
+
 @lru_cache
 def get_latest_runs_by_model() -> List[Run]:
     """Gets the last successful production run for each encoder.
