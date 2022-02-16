@@ -1,7 +1,6 @@
-from typing import Dict, Literal
+from typing import Dict
 
 from metaflow import (
-    conda_base,
     current,
     FlowSpec,
     Parameter,
@@ -110,7 +109,6 @@ class NsplLookup(FlowSpec):
     @step
     def data_quality(self):
         """Data quality checks."""
-        from utils import LOOSE_UK_BOUNDS
 
         # Null checks
         has_nulls = self.nspl_data.isnull().sum().sum() > 0
@@ -120,8 +118,8 @@ class NsplLookup(FlowSpec):
         # Postcode validity
         # Choose very simple postcode verification as NSPL is a fairly
         # authoritative source that may update faster than a precise regex
-        POSTCODE_REGEX = r"^([A-Z]{1,2}[A-Z\d]{0,2}? ?\d[A-Z]{2})$"
-        valid_pcds = self.nspl_data.pcds.str.match(POSTCODE_REGEX)
+        postcode_regex = r"^([A-Z]{1,2}[A-Z\d]{0,2}? ?\d[A-Z]{2})$"
+        valid_pcds = self.nspl_data.pcds.str.match(postcode_regex)
         if not valid_pcds.all():
             raise AssertionError(
                 "Invalid postcodes detected: "
