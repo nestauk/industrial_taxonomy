@@ -2,6 +2,7 @@ import numpy as np
 
 from metaflow import (
     conda_base,
+    conda,
     current,
     FlowSpec,
     Parameter,
@@ -10,9 +11,9 @@ from metaflow import (
 )
 
 from industrial_taxonomy.getters.text_sectors import text_sectors
-from industrial_taxonomy.getters.glass_embed import (
-    glass_description_embeddings,
-    org_ids,
+from industrial_taxonomy.getters.glass_house import (
+    description_embeddings,
+    embedded_org_ids,
 )
 
 from utils import find_knn, assign_knn_cluster
@@ -23,13 +24,6 @@ REASSIGN_AGG_FUNC = np.median
 MIN_REASSIGN_DIST = 0.8
 
 
-@conda_base(
-    python="3.8",
-    libraries={
-        "pytorch::faiss": "1.7.2",
-        "scikit-learn": "1.0.2",
-    },
-)
 @project(name="industrial_taxonomy")
 class ClusterReassignFlow(FlowSpec):
     """Reassign companies to clusters based on their K nearest neighbours.
@@ -49,16 +43,21 @@ class ClusterReassignFlow(FlowSpec):
         default=lambda _: not current.is_production,
     )
 
+    @conda(
+        libraries={
+            "graph-tool": "2.44",
+        },
+    )
     @step
     def start(self):
         """Load data and truncate if in test mode."""
         n_samples = 20_000 if self.test_mode and not current.is_production else None
 
-        self.glass_org_embeddings = glass_description_embeddings()[:n_samples]
-        self.glass_org_ids = org_ids()[:n_samples]
+        self.glass_org_embeddings = description_embeddings()[:n_samples]
+        self.glass_org_ids = embedded_org_ids()[:n_samples]
 
         self.clusters = {}
-        for param, clusters in text_sectors.items():
+        for param, clusters in text_sectors().items():
             clusters = dict(clusters)
             clusters = {
                 org_id: clusters[org_id]
@@ -69,6 +68,12 @@ class ClusterReassignFlow(FlowSpec):
         # remove silhouette pre reassign
         self.next(self.generate_index)
 
+    @conda(
+        python="3.8",
+        libraries={
+            "faiss": "1.7.2",
+        },
+    )
     @step
     def generate_index(self):
         """Generates a FAISS index of Glass description embeddings."""
@@ -110,31 +115,19 @@ class ClusterReassignFlow(FlowSpec):
         ]
         self.next(self.end)
 
-    def silhouette_post_reassign(self):
-        """"Calculate sample silhouette score for Glass orgs based on cluster
-        IDs after reassignment.
-        """
-        from sklearn.metrics import silhouette_samples
+    # @step
+    # def silhouette_post_reassign(self):
+    #     """"Calculate sample silhouette score for Glass orgs based on cluster
+    #     IDs after reassignment.
+    #     """
+    #     from sklearn.metrics import silhouette_samples
 
-        self.silhouette_before = silhouette_samples(
-            self.glass_org_embeddings,
-            self.clusters_reassigned,
-            metric="cosine"
-        )
-        self.next(self.end)
-
-    def silhouette_post_reassign(self):
-        """"Calculate sample silhouette score for Glass orgs based on cluster
-        IDs after reassignment.
-        """
-        from sklearn.metrics import silhouette_samples
-
-        self.silhouette_before = silhouette_samples(
-            self.glass_org_embeddings,
-            self.clusters_reassigned,
-            metric="cosine"
-        )
-        self.next(self.end)
+    #     self.silhouette_before = silhouette_samples(
+    #         self.glass_org_embeddings,
+    #         self.clusters_reassigned,
+    #         metric="cosine"
+    #     )
+    #     self.next(self.end)
 
     @step
     def end(self):
