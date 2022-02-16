@@ -38,12 +38,13 @@ class Groupby:
         agg = np.array([unique_keys, np.array(agg)])
         return agg
 
+
 def find_knn(
     embeddings: npt.NDArray,
-    index, # FAISS index
+    index,  # FAISS index
     k: int,
     chunk_size: Optional[int] = None,
-    ) -> List[Tuple[npt.NDArray, npt.NDArray]]:
+) -> List[Tuple[npt.NDArray, npt.NDArray]]:
     """Gets the k nearest neighbours to a set of embeddings from an index.
 
     Args:
@@ -70,7 +71,7 @@ def assign_knn_cluster(
     id_cluster_lookup: Dict[int, int],
     agg_func: Callable,
     min_agg_distance: float,
-    ) -> List[Tuple[int, str]]:
+) -> List[Tuple[int, str]]:
     """Finds the cluster with the smallest average distance from a set of K
     nearest neighbours.
 
