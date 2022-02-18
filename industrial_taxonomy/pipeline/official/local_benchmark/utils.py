@@ -5,7 +5,7 @@ import pandas as pd
 import yaml
 from io import StringIO
 from scipy.stats import zscore
-from toolz import pipe
+from toolz import pipe, partial
 
 
 ONS_LU = "https://www.ons.gov.uk/visualisations/dvc1786/datadownload.csv"
@@ -79,11 +79,11 @@ def clean_ons(ons_table: pd.DataFrame) -> pd.DataFrame:
     return ons_.assign(indicator=lambda df: df["indicator"].str.replace("'", ""))
 
 
-def make_zscore(ons_table) -> pd.DataFrame:
+def make_zscore(table, group_var: list = ["indicator"]) -> pd.DataFrame:
     """Create a zscore for each indicator in the data"""
 
     return (
-        ons_table.groupby("indicator")
+        table.groupby(group_var)
         .apply(lambda df: df.dropna().assign(zscore=lambda df: zscore(df["value"])))
         .reset_index(drop=True)
     )
@@ -150,12 +150,16 @@ def standardise_beis(beis_table: pd.DataFrame, var_name, nuts_lad_lookup: dict):
     """Standardise the columnns etc for a BEIS table"""
 
     return (
-        beis_table.rename(columns={var_name: "value", "year": "period"})
-        .assign(indicator=var_name)
+        pipe(
+            beis_table.rename(columns={var_name: "value", "year": "period"}).assign(
+                indicator=var_name
+            ),
+            partial(make_zscore, group_var=["indicator", "period"]),
+        )
         .assign(zscore=lambda df: zscore(df["value"]))
-        .assign(lad_code=lambda df: df["nuts_id"].map(nuts_lad_lookup))
+        .assign(la_code=lambda df: df["nuts_id"].map(nuts_lad_lookup))
         .assign(source="nesta_beis")[
-            ["lad_code", "period", "indicator", "source", "value", "zscore"]
+            ["la_code", "period", "indicator", "source", "value", "zscore"]
         ]
     )
 
