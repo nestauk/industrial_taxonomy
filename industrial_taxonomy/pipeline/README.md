@@ -53,3 +53,13 @@ python industrial_taxonomy/pipeline/glass_embed/flow.py \
  --no-pylint \
  run
 ```
+
+## 6. Reassign clusters
+
+```bash
+python industrial_taxonomy/pipeline/cluster_reassign/flow.py \
+ --production \
+ --environment=conda \
+ --no-pylint \
+ run
+```
