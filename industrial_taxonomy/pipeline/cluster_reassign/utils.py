@@ -35,13 +35,54 @@ class Groupby:
         for k in unique_keys:
             v = self.values[self.keys == k]
             agg.append(function(v))
-        agg = np.array([unique_keys, np.array(agg)])
-        return agg
+        agg = np.array(agg)
+        return unique_keys, agg
+
+
+def get_clusters_embeddings(
+    clusters: List[Tuple[int, int]],
+    org_ids: List[int],
+    embeddings: npt.NDArray,
+) -> npt.NDArray:
+    """Returns the embeddings for a set of clusters.
+
+    Args:
+        clusters: List of cluster ID + org ID pairs.
+        org_ids: List of Glass org IDs corresponding to embedding rows.
+        embeddings: 2-D array of Glass org embeddings.
+
+    Returns:
+        Embeddings for the organisations in clusters, in the order that
+            they were passed.
+    """
+    glass_org_ids_clusters = [c[1] for c in clusters]
+    glass_org_id_to_loc = dict(zip(org_ids, range(len(org_ids))))
+    embedding_locs = list(itemgetter(*glass_org_ids_clusters)(glass_org_id_to_loc))
+    return embeddings[embedding_locs]
+
+
+def generate_index(
+    index: "faiss.Index",
+    embeddings: npt.NDArray,
+) -> "faiss.Index":
+    """Generate a FAISS index from an array.
+
+    Args:
+        index: A FAISS Index class.
+        embeddings: An array of embeddings.
+
+    Returns:
+        index: Constructed FAISS index with dimensions = embeddings.shape[1].
+    """
+    dimensions = embeddings.shape[1]
+    index = index(dimensions)
+    index.add(embeddings)
+    return index
 
 
 def find_knn(
     embeddings: npt.NDArray,
-    index,  # FAISS index
+    index: "faiss.Index",
     k: int,
     chunk_size: Optional[int] = None,
 ) -> List[Tuple[npt.NDArray, npt.NDArray]]:
@@ -60,17 +101,29 @@ def find_knn(
     """
     knn = []
     for embedding_chunk in partition_all(chunk_size, embeddings):
-        dists, knn_ids = index.search(embedding_chunk, k + 1)
+        dists, knn_ids = index.search(np.array(embedding_chunk), k + 1)
         knn.extend(list(zip(knn_ids[:, 1:], dists[:, 1:])))
 
     return knn
+
+
+def intify_clusters(clusters: List[Tuple[str, str]]) -> List[Tuple[str, int]]:
+    """Converts org IDs in cluster tuples from sting to integer.
+
+    Args:
+        clusters: List of cluster ID + string org ID pairs.
+
+    Returns:
+        List of cluster ID and integer org ID pairs.
+    """
+    return [(cluster, int(org_id)) for cluster, org_id in clusters]
 
 
 def assign_knn_cluster(
     knn: List[Tuple[npt.NDArray, npt.NDArray]],
     id_cluster_lookup: Dict[int, int],
     agg_func: Callable,
-    min_agg_distance: float,
+    org_ids: List[int],
 ) -> List[Tuple[int, str]]:
     """Finds the cluster with the smallest average distance from a set of K
     nearest neighbours.
@@ -82,23 +135,54 @@ def assign_knn_cluster(
             labels.
         agg_func: A `numpy` function passed to `Groupby` to calculate the
             aggregate distance to nearest neighbour clusters.
-        min_agg_distance: If the aggregate distance to nearest cluster is less
-            than this, then samples are assigned to their existing cluster.
+        org_ids: List of the organisation IDs.
 
     Returns:
-        nearest_clusters: List of IDs and their assigned cluster.
+        nearest_clusters: Records of FAISS index IDs and their assigned cluster.
     """
     nearest_clusters = []
-    for sample_id, (knn_ids, dists) in enumerate(knn):
+    for org_id, (knn_ids, dists) in zip(org_ids, knn):
         knn_cluster_ids = itemgetter(*knn_ids)(id_cluster_lookup)
-        gb = Groupby(knn_cluster_ids, dists)
-        aggregated = gb.groupby_apply(agg_func)
-        smallest_dist = np.max(aggregated[:, 1])
+        gb = Groupby(np.array(knn_cluster_ids), dists)
+        unique_clusters, aggregated = gb.groupby_apply(agg_func)
+        unique_clusters = unique_clusters[np.argsort(aggregated)[::-1]]
+        aggregated = np.sort(aggregated)[::-1]
 
-        if smallest_dist >= min_agg_distance:
-            nearest_cluster = aggregated[:, 0][np.argmax(aggregated[:, 1])]
-            nearest_clusters.append((sample_id, nearest_cluster))
-        else:
-            nearest_clusters.append((sample_id, id_cluster_lookup[sample_id]))
+        nearest_clusters.append(
+            {
+                "org_id": org_id,
+                "best_cluster": unique_clusters[0],
+                f"best_cluster_{agg_func.__name__}_dist": aggregated[0],
+                "nearest_clusters": list(unique_clusters),
+                f"nearest_cluster_{agg_func.__name__}_dists": list(aggregated),
+            }
+        )
 
     return nearest_clusters
+
+
+def add_original_clusters(
+    knn_clusters: List[Dict],
+    original_clusters: List[Tuple[int, int]],
+) -> List[Dict]:
+    """If an org has already been assigned to a cluster, this adds that cluster
+    to the record. Otherwise the org will be assigned `None`.
+
+    Args:
+        knn_clusters: Records of clusters found via KNN search.
+        original_clusters: List of org IDs that are already assigned to a
+            cluster.
+
+    Returns:
+        knn_clusters: KNN clusters with original cluster.
+    """
+    original_clusters_lookup = dict(
+        (org_id, clust_id) for clust_id, org_id in original_clusters
+    )
+    for clusters in knn_clusters:
+        original_cluster = original_clusters_lookup.get(
+            clusters["org_id"],
+            None,
+        )
+        clusters.update({"current_cluster": original_cluster})
+    return knn_clusters

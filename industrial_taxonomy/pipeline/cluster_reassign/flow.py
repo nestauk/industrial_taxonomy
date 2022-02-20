@@ -1,27 +1,36 @@
+import logging
 import numpy as np
 
 from metaflow import (
-    conda_base,
     conda,
     current,
     FlowSpec,
     Parameter,
     project,
     step,
+    Run,
 )
 
-from industrial_taxonomy.getters.text_sectors import text_sectors
 from industrial_taxonomy.getters.glass_house import (
     description_embeddings,
     embedded_org_ids,
 )
 
-from utils import find_knn, assign_knn_cluster
+from utils import (
+    find_knn,
+    assign_knn_cluster,
+    generate_index,
+    get_clusters_embeddings,
+    add_original_clusters,
+    intify_clusters,
+)
+
+
+logger = logging.getLogger(__name__)
 
 K = 20
-INDEX_SEARCH_CHUNK_SIZE = 10_000
-REASSIGN_AGG_FUNC = np.median
-MIN_REASSIGN_DIST = 0.8
+INDEX_SEARCH_CHUNK_SIZE = 1_000
+REASSIGN_AGG_FUNC = np.mean
 
 
 @project(name="industrial_taxonomy")
@@ -51,22 +60,21 @@ class ClusterReassignFlow(FlowSpec):
     @step
     def start(self):
         """Load data and truncate if in test mode."""
-        n_samples = 20_000 if self.test_mode and not current.is_production else None
+        from industrial_taxonomy.getters.text_sectors import text_sectors
 
-        self.glass_org_embeddings = description_embeddings()[:n_samples]
-        self.glass_org_ids = embedded_org_ids()[:n_samples]
-
-        self.clusters = {}
-        for param, clusters in text_sectors().items():
-            clusters = dict(clusters)
-            clusters = {
-                org_id: clusters[org_id]
-                for org_id in clusters.keys() & set(self.org_ids)
+        self.clusters = text_sectors()
+        if self.test_mode and not current.is_production:
+            min_clusters_len = min([len(c) for c in self.clusters.values()])
+            self.clusters = {
+                k: v for k, v in self.clusters.items() if len(v) == min_clusters_len
             }
-            self.clusters[param] = clusters
-        # convert code below to work with dict inputs
-        # remove silhouette pre reassign
-        self.next(self.generate_index)
+
+        for param, clusters in self.clusters.items():
+            self.clusters[param] = intify_clusters(clusters)
+
+        self.k = K
+
+        self.next(self.reassign_companies)
 
     @conda(
         python="3.8",
@@ -75,59 +83,59 @@ class ClusterReassignFlow(FlowSpec):
         },
     )
     @step
-    def generate_index(self):
-        """Generates a FAISS index of Glass description embeddings."""
-        import faiss
-
-        dimensions = self.glass_org_embeddings.shape[1]
-        self.index = faiss.IndexFlatIP(dimensions)
-        self.index.add(self.glass_org_embeddings)
-
-        self.next(self.reassign_companies)
-
-    @step
     def reassign_companies(self):
         """Queries FAISS index for the K nearest neighbours to each company
         given an embedding of its Glass description. Assigns a cluster label
         based on the labels of the nearest neighbours.
         """
-        knn = find_knn(
-            self.glass_org_embeddings,
-            self.index,
-            k=K,
-            chunk_size=INDEX_SEARCH_CHUNK_SIZE,
-        )
+        import faiss
 
-        index_id_to_cluster_lookup = dict(
-            (i, c) for i, (_, c) in enumerate(self.clusters)
-        )
+        nrows = 20_000 if self.test_mode and not current.is_production else None
 
-        knn_clusters = assign_knn_cluster(
-            knn,
-            index_id_to_cluster_lookup,
-            REASSIGN_AGG_FUNC,
-            MIN_REASSIGN_DIST,
-        )
+        run = Run(
+            "GlassEmbed/2603"
+        )  # TODO need to re-run GlassEmbed to get improved embeddings as latest run
+        glass_embeddings = description_embeddings(run)
+        glass_org_ids = embedded_org_ids()
 
-        index_id_to_glass_id_lookup = dict(enumerate(self.glass_org_ids))
-        self.clusters_reassigned = [
-            (index_id_to_glass_id_lookup[i], c) for i, c in knn_clusters
-        ]
+        faiss.normalize_L2(glass_embeddings)
+
+        self.clusters_reassigned = {}
+        for param, clusters in self.clusters.items():
+            embeddings = get_clusters_embeddings(
+                clusters,
+                glass_org_ids,
+                glass_embeddings,
+            )
+            logger.info("Generating FAISS index")
+            faiss_index = generate_index(
+                faiss.IndexFlatIP,
+                embeddings,
+            )
+            logger.info("Finding nearest neighbours")
+            knn = find_knn(
+                glass_embeddings[:nrows],
+                faiss_index,
+                k=self.k,
+                chunk_size=INDEX_SEARCH_CHUNK_SIZE,
+            )
+
+            logger.info("Extracting nearest neighbour clusters")
+            index_id_to_cluster_lookup = dict(enumerate(c[0] for c in clusters))
+            knn_clusters = assign_knn_cluster(
+                knn,
+                index_id_to_cluster_lookup,
+                REASSIGN_AGG_FUNC,
+                glass_org_ids,
+            )
+
+            knn_clusters = add_original_clusters(
+                knn_clusters,
+                clusters,
+            )
+
+            self.clusters_reassigned[param] = knn_clusters
         self.next(self.end)
-
-    # @step
-    # def silhouette_post_reassign(self):
-    #     """"Calculate sample silhouette score for Glass orgs based on cluster
-    #     IDs after reassignment.
-    #     """
-    #     from sklearn.metrics import silhouette_samples
-
-    #     self.silhouette_before = silhouette_samples(
-    #         self.glass_org_embeddings,
-    #         self.clusters_reassigned,
-    #         metric="cosine"
-    #     )
-    #     self.next(self.end)
 
     @step
     def end(self):
