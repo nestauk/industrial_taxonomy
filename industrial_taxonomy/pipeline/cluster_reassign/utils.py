@@ -1,3 +1,4 @@
+from collections import defaultdict
 from operator import itemgetter
 from toolz.itertoolz import partition_all
 import numpy as np
@@ -100,9 +101,13 @@ def find_knn(
         dists: Cosine distances of from
     """
     knn = []
+    n = 0
     for embedding_chunk in partition_all(chunk_size, embeddings):
         dists, knn_ids = index.search(np.array(embedding_chunk), k + 1)
         knn.extend(list(zip(knn_ids[:, 1:], dists[:, 1:])))
+
+        n += np.array(embedding_chunk).shape[0]
+        print(f"Found neighbours for {n} samples.")
 
     return knn
 
@@ -140,7 +145,7 @@ def assign_knn_cluster(
     Returns:
         nearest_clusters: Records of FAISS index IDs and their assigned cluster.
     """
-    nearest_clusters = []
+    nearest_clusters = defaultdict(list)
     for org_id, (knn_ids, dists) in zip(org_ids, knn):
         knn_cluster_ids = itemgetter(*knn_ids)(id_cluster_lookup)
         gb = Groupby(np.array(knn_cluster_ids), dists)
@@ -148,15 +153,9 @@ def assign_knn_cluster(
         unique_clusters = unique_clusters[np.argsort(aggregated)[::-1]]
         aggregated = np.sort(aggregated)[::-1]
 
-        nearest_clusters.append(
-            {
-                "org_id": org_id,
-                "best_cluster": unique_clusters[0],
-                f"best_cluster_{agg_func.__name__}_dist": aggregated[0],
-                "nearest_clusters": list(unique_clusters),
-                f"nearest_cluster_{agg_func.__name__}_dists": list(aggregated),
-            }
-        )
+        nearest_clusters["org_id"].append(org_id)
+        nearest_clusters["best_cluster"].append(unique_clusters[0])
+        nearest_clusters[f"best_cluster_{agg_func.__name__}_dist"].append(aggregated[0])
 
     return nearest_clusters
 
@@ -179,10 +178,8 @@ def add_original_clusters(
     original_clusters_lookup = dict(
         (org_id, clust_id) for clust_id, org_id in original_clusters
     )
-    for clusters in knn_clusters:
-        original_cluster = original_clusters_lookup.get(
-            clusters["org_id"],
-            None,
-        )
-        clusters.update({"current_cluster": original_cluster})
+
+    knn_clusters["original_cluster"] = [
+        original_clusters_lookup.get(org_id, None) for org_id in knn_clusters["org_id"]
+    ]
     return knn_clusters

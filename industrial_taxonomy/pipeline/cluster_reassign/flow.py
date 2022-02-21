@@ -9,6 +9,7 @@ from metaflow import (
     project,
     step,
     Run,
+    batch,
 )
 
 from industrial_taxonomy.getters.glass_house import (
@@ -76,10 +77,18 @@ class ClusterReassignFlow(FlowSpec):
 
         self.next(self.reassign_companies)
 
+    @batch(
+        # Queue gives p3.2xlarge
+        queue="job-queue-GPU-nesta-metaflow",
+        image="metaflow-pytorch",
+        gpu=1,
+        memory=60000,
+        cpu=8,
+    )
     @conda(
         python="3.8",
         libraries={
-            "faiss": "1.7.2",
+            "faiss-gpu": "1.7.2",
         },
     )
     @step
@@ -107,12 +116,12 @@ class ClusterReassignFlow(FlowSpec):
                 glass_org_ids,
                 glass_embeddings,
             )
-            logger.info("Generating FAISS index")
+            logger.info(f"Generating FAISS index for {param}")
             faiss_index = generate_index(
                 faiss.IndexFlatIP,
                 embeddings,
             )
-            logger.info("Finding nearest neighbours")
+            logger.info(f"Finding nearest neighbours for {param}")
             knn = find_knn(
                 glass_embeddings[:nrows],
                 faiss_index,
@@ -120,7 +129,7 @@ class ClusterReassignFlow(FlowSpec):
                 chunk_size=INDEX_SEARCH_CHUNK_SIZE,
             )
 
-            logger.info("Extracting nearest neighbour clusters")
+            logger.info(f"Extracting nearest neighbour clusters for {param}")
             index_id_to_cluster_lookup = dict(enumerate(c[0] for c in clusters))
             knn_clusters = assign_knn_cluster(
                 knn,
