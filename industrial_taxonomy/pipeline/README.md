@@ -38,10 +38,16 @@ python industrial_taxonomy/pipeline/official/nomis/flow.py \
 run
 ```
 
-**Other local benchmarking data**
+**Other local benchmarking and plotting data**
 
 ```bash
 python industrial_taxonomy/pipeline/official/local_benchmark/flow.py \
+--production \
+run
+```
+
+```bash
+python industrial_taxonomy/pipeline/official/geo/flow.py \
 --production \
 run
 ```
