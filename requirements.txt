@@ -13,3 +13,6 @@ xlrd
 openpyxl
 metaflow_extensions@git+https://github.com/nestauk/metaflow_extensions@25_fix_project_env
 pyyaml
+altair-saver
+webdriver_manager
+selenium
