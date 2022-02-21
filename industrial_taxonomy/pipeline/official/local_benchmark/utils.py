@@ -146,7 +146,9 @@ def fetch_beis_table(source_indicator: str) -> pd.DataFrame:
     return pd.read_csv(base_url.format(indicator=source_indicator) + ".csv")
 
 
-def standardise_beis(beis_table: pd.DataFrame, var_name, nuts_lad_lookup: dict):
+def standardise_beis(
+    beis_table: pd.DataFrame, var_name, nuts_lad_lookup: dict
+) -> pd.DataFrame:
     """Standardise the columnns etc for a BEIS table"""
 
     return (
@@ -164,7 +166,7 @@ def standardise_beis(beis_table: pd.DataFrame, var_name, nuts_lad_lookup: dict):
     )
 
 
-def fetch_schema(source_indicator: str):
+def fetch_schema(source_indicator: str) -> dict:
     """Fetch the schema for an indicator"""
 
     base_url = f"{BEIS_URL}/{source_indicator}"
