@@ -2,9 +2,11 @@
 
 from functools import lru_cache
 
+import geopandas as gp
 from metaflow import Flow, Run
 from metaflow.exception import MetaflowNotFound
 from typing import Optional
+
 
 try:  # Hack for type-hints on attributes
     import pandas as pd
@@ -171,3 +173,16 @@ def local_benchmarking(run: Optional[Run] = None):
         run = get_run("SecondaryIndicators")
 
     return run.data.secondary_table
+
+
+def lad_boundaries(run: Optional[Run] = None) -> dict:
+    """Read a geojson boundary and parse as geopandas"""
+
+    if run is None:
+        run = get_run("FetchBound")
+
+    geojson = run.data.boundary
+
+    return gp.GeoDataFrame.from_features(
+        geojson["features"], crs=geojson["crs"]["properties"]["name"]
+    )
