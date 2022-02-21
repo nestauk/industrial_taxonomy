@@ -16,3 +16,4 @@ pyyaml
 altair-saver
 webdriver_manager
 selenium
+geopandas
