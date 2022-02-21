@@ -36,3 +36,16 @@ def topsbm_models(run: Optional[Run] = None) -> Dict[sector_id, sbmtm]:
     """Gets topic models trained on each sector"""
     run = run or get_run("ClusterGlass")
     return run.data.models
+
+
+def reassigned_text_sectors(run: Optional[Run] = None) -> Dict[Dict[List]]:
+    """Gets organisations assigned to text sectors based on their K nearest
+    neighbours in a semantic similarity search.
+
+    Returns:
+        A dictionary for each clustering parameter that contains the Glass org
+        id, the best matching cluster, the average distance to the nearest
+        neighbours from that cluster and the original cluster (if applicable).
+    """
+    run = run or get_run("ClusterReassignFlow")
+    return run.data.clusters_reassigned
