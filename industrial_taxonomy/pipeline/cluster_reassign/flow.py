@@ -101,10 +101,7 @@ class ClusterReassignFlow(FlowSpec):
 
         nrows = 20_000 if self.test_mode and not current.is_production else None
 
-        run = Run(
-            "GlassEmbed/2603"
-        )  # TODO need to re-run GlassEmbed to get improved embeddings as latest run
-        glass_embeddings = description_embeddings(run)
+        glass_embeddings = description_embeddings()
         glass_org_ids = embedded_org_ids()
 
         faiss.normalize_L2(glass_embeddings)
