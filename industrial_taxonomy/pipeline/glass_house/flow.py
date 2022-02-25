@@ -14,9 +14,9 @@ from metaflow import (
 )
 from metaflow.datatools.s3 import MetaflowS3NotFound
 
-from industrial_taxonomy.getters.glass_house import FullMatchResult
 
 try:  # Hack for type-hints on attributes
+    from industrial_taxonomy.getters.glass_house import FullMatchResult
     from pandas import DataFrame
 except ImportError:
     pass
@@ -80,8 +80,9 @@ class JacchammerFlow(FlowSpec):
     clean_ch_names: "DataFrame"
     clean_glass_names: "DataFrame"
     run_id: int
-    full_top_matches: List[FullMatchResult]  # TODO: py37 error
+    full_top_matches: List["FullMatchResult"]  # TODO: py37 error
 
+    @pip(path="requirements-flow.txt")
     @step
     def start(self):
         """Load raw data."""
@@ -148,6 +149,7 @@ class JacchammerFlow(FlowSpec):
 
         self.next(self.extract_top_matches)
 
+    @pip(path="requirements-flow.txt")
     @resources(memory=64_000)
     @step
     def extract_top_matches(self):
@@ -162,6 +164,7 @@ class JacchammerFlow(FlowSpec):
         print("Number of matches: ", self.top_matches.shape[0])
         self.next(self.end)
 
+    @pip(path="requirements-flow.txt")
     @step
     def end(self):
         """Merge names and id's back in and convert to dict."""

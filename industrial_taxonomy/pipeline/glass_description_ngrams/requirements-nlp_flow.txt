@@ -1,1 +1,1 @@
--e industrial_taxonomy/
+myproject/
