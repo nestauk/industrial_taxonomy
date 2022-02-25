@@ -23,6 +23,7 @@ python industrial_taxonomy/pipeline/glass_house/flow.py \
  run \
  --clean-names true \
  --with batch
+ --with pip:requirements=requirements-flow.txt
 ```
 
 ## 3. Tokenise and N-gram Glass descriptions
@@ -35,6 +36,7 @@ python industrial_taxonomy/pipeline/glass_description_ngrams/nlp_flow.py \
  --n-gram 3 \
  --n-process 2 \
  --with batch:memory=32000,cpu=2
+ --with pip:requirements=requirements-nlp_flow.txt
 ```
 
 ## 4. Cluster glass descriptions into text sectors
