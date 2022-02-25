@@ -1,6 +1,15 @@
 from typing import Dict, Generator, List
 
-from metaflow import current, FlowSpec, step, Parameter, project, JSONType, conda_base
+from metaflow import (
+    current,
+    FlowSpec,
+    step,
+    Parameter,
+    pip,
+    project,
+    JSONType,
+    conda_base,
+)
 
 
 @conda_base(
@@ -79,6 +88,7 @@ class GlassNlpFlow(FlowSpec):
             yield self.raw_documents.pop()
             i += 1
 
+    @pip(path="requirements-nlp_flow.txt", safe=False)
     @step
     def start(self):
         """Load data."""
@@ -99,6 +109,7 @@ class GlassNlpFlow(FlowSpec):
 
         self.next(self.process)
 
+    @pip(path="requirements-nlp_flow.txt", safe=False)
     @step
     def process(self):
         """Run the NLP pipeline, returning tokenised documents."""
@@ -139,6 +150,7 @@ class GlassNlpFlow(FlowSpec):
         )
         self.next(self.end)
 
+    @pip(path="requirements-nlp_flow.txt", safe=False)
     @step
     def end(self):
         """No-op."""
