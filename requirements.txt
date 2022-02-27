@@ -5,6 +5,7 @@ matplotlib
 altair
 metaflow
 tqdm
+toolz
 filelock
 typer
 sh

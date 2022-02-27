@@ -8,22 +8,19 @@ from metaflow import (
     Parameter,
     project,
     step,
-    Run,
     batch,
-)
-
-from industrial_taxonomy.getters.glass_house import (
-    description_embeddings,
-    embedded_org_ids,
+    pip,
 )
 
 from utils import (
     find_knn,
-    assign_knn_cluster,
     generate_index,
     get_clusters_embeddings,
-    add_original_clusters,
     intify_clusters,
+    reassign_clustered,
+    assign_non_clustered,
+    get_non_clusters_embeddings,
+    knn_output,
 )
 
 
@@ -39,11 +36,16 @@ class ClusterReassignFlow(FlowSpec):
     """Reassign companies to clusters based on their K nearest neighbours.
 
     Attributes:
+        assigned_rest: Glass organisation IDs that were not clustered into text
+            sectors and the text sectors that they have been assigned using a K
+            nearest neighbours search.
         clusters: Glass organisation IDs and their cluster labels.
-        clusters_reassigned: Glass organisation IDs and their reassigned
-            cluster labels.
-        glass_org_embeddings: Glass organisation embeddings from `GlassEmbed`.
-        glass_org_ids: Glass organisation IDs of organisations with embeddings.
+        entropy_after:
+        entropy_before:
+        reassigned: Glass organisation IDs and their reassigned
+            cluster labels found using a K nearest neighbours search.
+        k: Number of nearest neighbours used to perform search.
+        knn:
     """
 
     test_mode = Parameter(
@@ -60,7 +62,7 @@ class ClusterReassignFlow(FlowSpec):
     )
     @step
     def start(self):
-        """Load data and truncate if in test mode."""
+        """Load data, convert org IDs to integers and truncate if in test mode."""
         from industrial_taxonomy.getters.text_sectors import text_sectors
 
         self.clusters = text_sectors()
@@ -89,6 +91,7 @@ class ClusterReassignFlow(FlowSpec):
         python="3.8",
         libraries={
             "faiss-gpu": "1.7.2",
+            # "faiss": "1.7.2"
         },
     )
     @step
@@ -99,16 +102,34 @@ class ClusterReassignFlow(FlowSpec):
         """
         import faiss
 
-        nrows = 20_000 if self.test_mode and not current.is_production else None
+        from industrial_taxonomy.getters.glass_house import (
+            description_embeddings,
+            embedded_org_ids,
+        )
 
         glass_embeddings = description_embeddings()
         glass_org_ids = embedded_org_ids()
 
         faiss.normalize_L2(glass_embeddings)
 
-        self.clusters_reassigned = {}
+        self.org_ids = dict()
+        self.knn = dict()
+        self.knn_org_ids = dict()
+        self.knn_original_text_sectors = dict()
+        self.knn_sims = dict()
+        self.assigned_text_sector = dict()
+        self.original_text_sector = dict()
+        self.knn_assigned_text_sectors = dict()
+
+        self.org_ids_rest = dict()
+        self.knn_org_ids_rest = dict()
+        self.knn_original_text_sectors_rest = dict()
+        self.knn_sims_rest = dict()
+        self.assigned_text_sector_rest = dict()
+        self.original_text_sector_rest = dict()
+        self.knn_assigned_text_sectors_rest = dict()
         for param, clusters in self.clusters.items():
-            embeddings = get_clusters_embeddings(
+            embeddings, embedding_locs = get_clusters_embeddings(
                 clusters,
                 glass_org_ids,
                 glass_embeddings,
@@ -120,27 +141,141 @@ class ClusterReassignFlow(FlowSpec):
             )
             logger.info(f"Finding nearest neighbours for {param}")
             knn = find_knn(
-                glass_embeddings[:nrows],
+                embeddings,
                 faiss_index,
                 k=self.k,
                 chunk_size=INDEX_SEARCH_CHUNK_SIZE,
             )
 
-            logger.info(f"Extracting nearest neighbour clusters for {param}")
-            index_id_to_cluster_lookup = dict(enumerate(c[0] for c in clusters))
-            knn_clusters = assign_knn_cluster(
+            logger.info(
+                (
+                    "Iteratively reassigning companies to nearest neighbour "
+                    f"clusters for {param}"
+                )
+            )
+            reassigned = reassign_clustered(
                 knn,
-                index_id_to_cluster_lookup,
-                REASSIGN_AGG_FUNC,
-                glass_org_ids,
-            )
-
-            knn_clusters = add_original_clusters(
-                knn_clusters,
                 clusters,
+                min_sim_threshold=0.6,
+                n_iter=20,
+                epsilon=0.05,
             )
 
-            self.clusters_reassigned[param] = knn_clusters
+            print(len(reassigned))
+            output = knn_output(
+                np.array(glass_org_ids)[embedding_locs],
+                clusters,
+                reassigned,
+                knn,
+            )
+
+            self.knn_org_ids[param] = output["knn_org_ids"]
+            self.knn_original_text_sectors[param] = output["knn_original_text_sectors"]
+            self.knn_sims[param] = output["knn_sims"]
+            self.assigned_text_sector[param] = output["assigned_text_sector"]
+            self.original_text_sector[param] = output["original_text_sector"]
+            self.knn_assigned_text_sectors[param] = output["knn_assigned_text_sectors"]
+            self.org_ids[param] = output["org_ids"]
+
+            logger.info(f"Assigning left over companies for {param}")
+            embeddings_rest, locs_rest = get_non_clusters_embeddings(
+                embedding_locs,
+                glass_embeddings,
+            )
+            nrows = 20_000 if self.test_mode and not current.is_production else None
+            locs_rest = locs_rest[:nrows]
+            embeddings_rest = embeddings_rest[:nrows]
+
+            logger.info(f"Finding left over nearest neighbours for {param}")
+            knn_rest = find_knn(
+                embeddings_rest,
+                faiss_index,
+                k=self.k,
+                chunk_size=INDEX_SEARCH_CHUNK_SIZE,
+            )
+
+            logger.info(f"Assigning left over companies for {param}")
+            assigned_rest = assign_non_clustered(
+                knn_rest, glass_org_ids, locs_rest, clusters, min_sim_threshold=0.6
+            )
+            # self.assigned_rest[param] = assigned_rest
+
+            output_rest = knn_output(
+                np.array(glass_org_ids)[locs_rest],
+                clusters,
+                assigned_rest,
+                knn_rest,
+                rest=True,
+            )
+
+            self.knn_org_ids_rest[param] = output_rest["knn_org_ids"]
+            self.knn_original_text_sectors_rest[param] = output_rest[
+                "knn_original_text_sectors"
+            ]
+            self.knn_assigned_text_sectors_rest[param] = output_rest[
+                "knn_assigned_text_sectors"
+            ]
+            self.knn_sims_rest[param] = output_rest["knn_sims"]
+            self.assigned_text_sector_rest[param] = output_rest["assigned_text_sector"]
+            self.original_text_sector_rest[param] = output_rest["original_text_sector"]
+            self.org_ids_rest[param] = output_rest["org_ids"]
+
+            self.knn[param] = knn
+
+        self.next(self.entropy)
+
+    @conda(
+        python="3.8",
+        libraries={
+            "scikit-bio": "0.5.6",
+        },
+    )
+    @step
+    def entropy(self):
+        """Calculates Shannon diversity index of clusters of the K nearest
+        neighbours before and after reassignment."""
+
+        from skbio.diversity.alpha import shannon
+        from sklearn.feature_extraction.text import CountVectorizer
+
+        def do_nothing(text):
+            """Dummy tokenizer and preprocessor."""
+            return text
+
+        cv = CountVectorizer(tokenizer=do_nothing, preprocessor=do_nothing)
+
+        self.entropy_before = {}
+        self.entropy_after = {}
+        for param, knn in self.knn.items():
+            logger.info(f"Calculating entropy for companies in {param}")
+            index_id_cluster_lookup = np.array(self.original_text_sector[param])
+            # index_id_cluster_lookup = np.array(
+            #     [c[0] for c in self.original_text_sector[param]]
+            # )
+
+            knn_ids = np.array([k[0][1:] for k in knn])
+            knn_cluster_labels = index_id_cluster_lookup[knn_ids]
+
+            counts_before = cv.fit_transform(knn_cluster_labels).todense()
+            entropy_before = [shannon(np.array(c)[0]) for c in counts_before]
+            self.entropy_before[param] = list(
+                # zip([c[1] for c in self.clusters[param]], entropy_before)
+                zip(self.org_ids[param], entropy_before)
+            )
+
+            index_id_reassigned_lookup = np.array(
+                self.assigned_text_sector[param]
+                # self.reassigned[param]["assigned_text_sector"]
+            )
+            knn_reassigned_labels = index_id_reassigned_lookup[knn_ids]
+
+            counts_after = cv.fit_transform(knn_reassigned_labels).todense()
+            entropy_after = [shannon(np.array(c)[0]) for c in counts_after]
+            self.entropy_after[param] = list(
+                zip(self.org_ids[param], entropy_after)
+                # zip([c[1] for c in self.clusters[param]], entropy_after)
+            )
+
         self.next(self.end)
 
     @step
