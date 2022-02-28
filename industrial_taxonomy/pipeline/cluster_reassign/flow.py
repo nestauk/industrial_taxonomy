@@ -265,21 +265,14 @@ class ClusterReassignFlow(FlowSpec):
 
             counts_before = cv.fit_transform(knn_cluster_labels).todense()
             entropy_before = [shannon(np.array(c)[0]) for c in counts_before]
-            self.entropy_before[param] = list(
+            self.entropy_before[param] = list(zip(self.org_ids[param], entropy_before))
 
-                zip(self.org_ids[param], entropy_before)
-            )
-
-            index_id_reassigned_lookup = np.array(
-                self.assigned_text_sector[param]
-            )
+            index_id_reassigned_lookup = np.array(self.assigned_text_sector[param])
             knn_reassigned_labels = index_id_reassigned_lookup[knn_ids]
 
             counts_after = cv.fit_transform(knn_reassigned_labels).todense()
             entropy_after = [shannon(np.array(c)[0]) for c in counts_after]
-            self.entropy_after[param] = list(
-                zip(self.org_ids[param], entropy_after)
-            )
+            self.entropy_after[param] = list(zip(self.org_ids[param], entropy_after))
 
         self.next(self.end)
 
