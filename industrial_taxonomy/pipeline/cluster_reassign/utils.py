@@ -337,10 +337,6 @@ def knn_output(
     assigned_ts_lookup = np.array([c[0] for c in reassigned])
 
     output = defaultdict(list)
-    # output["knn_org_ids"] = []
-    # output["knn_original_text_sectors"] = []
-    # output["knn_sims"] = []
-    # output["knn_assigned_text_sectors"] = []
 
     for knn_ids, sims in knn:
         if rest:
