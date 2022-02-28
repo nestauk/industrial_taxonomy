@@ -1,4 +1,4 @@
-numpy
+numpy==1.21
 scipy
 pandas
 matplotlib
@@ -16,3 +16,10 @@ altair-saver
 webdriver_manager
 selenium
 geopandas
+networkx
+umap-learn
+sklearn
+jupyterlab
+ratelim
+statsmodels
+xgboost

@@ -84,7 +84,11 @@ def make_zscore(table, group_var: list = ["indicator"]) -> pd.DataFrame:
 
     return (
         table.groupby(group_var)
-        .apply(lambda df: df.dropna().assign(zscore=lambda df: zscore(df["value"])))
+        .apply(
+            lambda df: df.dropna().assign(
+                zscore=lambda df: zscore(df["value"], nan_policy="omit")
+            )
+        )
         .reset_index(drop=True)
     )
 

@@ -2,7 +2,7 @@ from metaflow import FlowSpec, step, Parameter, project
 
 
 BOUND_URL = (
-    "https://opendata.arcgis.com/datasets/d31f826e318d441390f54f472d976ee1_0.geojson"
+    "https://opendata.arcgis.com/datasets/db23041df155451b9a703494854c18c4_0.geojson"
 )
 
 

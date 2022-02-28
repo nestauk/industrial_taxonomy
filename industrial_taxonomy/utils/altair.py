@@ -3,6 +3,7 @@
 import json
 import os
 import altair as alt
+import pandas as pd
 from altair import Chart
 from altair_saver import save
 from geopandas import GeoDataFrame
@@ -95,11 +96,11 @@ def choro_plot(
         base_map.transform_calculate(region=f"datum.properties.{region_name}")
         .mark_geoshape(filled=True, stroke="darkgrey", strokeWidth=0.2)
         .encode(
-            size=f"properties.{count_var}:Q",
+            size=f"properties.{count_var}:N",
             color=alt.Color(
-                f"properties.{count_var}:Q",
+                f"properties.{count_var}:N",
                 title=count_var_name,
-                scale=alt.Scale(scheme="Spectral", type=scale_type),
+                scale=alt.Scale(scheme=scheme, type=scale_type),
                 sort="descending",
             ),
             tooltip=[
@@ -110,3 +111,18 @@ def choro_plot(
     )
 
     return base_map + choropleth
+
+
+def lad_nuts1_lookup(year: int = 2019) -> dict:
+    """Read a lookup between local authorities and NUTS"""
+
+    if year == 2019:
+        lu_df = pd.read_csv(
+            "https://opendata.arcgis.com/datasets/3ba3daf9278f47daba0f561889c3521a_0.csv"
+        )
+        return lu_df.set_index("LAD19CD")["RGN19NM"].to_dict()
+    else:
+        lu_df = pd.read_csv(
+            "https://opendata.arcgis.com/datasets/054349b09c094df2a97f8ddbd169c7a7_0.csv"
+        )
+        return lu_df.set_index("LAD20CD")["RGN20NM"].to_dict()
