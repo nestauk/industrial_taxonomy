@@ -47,9 +47,26 @@ def reassigned_text_sectors(
     neighbours in a semantic similarity search.
 
     Returns:
-        A dictionary for each clustering parameter that contains the Glass org
-        id, the best matching cluster, the average distance to the nearest
-        neighbours from that cluster and the original cluster (if applicable).
+        A dictionary for each clustering parameter that contains outputs from
+        the sector reassignment:
+        - org_ids: the Glass organisation IDs of the companies in this output
+        - original_text_sector: the text sector for each company from the
+            original clustering. If the companies were not included in that
+            the text sector clustering, this will be `None` for each company.
+        - assiged_text_sector: the text sector of each company after 
+            reassignment.
+        - knn_org_ids: the Glass organisation IDs of the K nearest neighbours
+        - knn_original_text_sectors: the text sectors of the K nearest
+            neighbours before reassignment.
+        - knn_assigned_text_sectors: the text sectors of the K nearest
+            neighbours after reassignment.
+        - knn_sims: the similarity scores of the K nearest neighbours.
+        - knn_text_sector_agg: unique set of text sectors of the K nearest
+            neighbours after reassignent.
+        - knn_text_sector_agg_sims: average K nearest neighbours similarity of
+            the unique set of text sectors (if more than one nearest neighbour
+            belong to the same text sector, this is the average similarity
+            score for those neighbours)
     """
     run = run or get_run("ClusterReassignFlow")
 

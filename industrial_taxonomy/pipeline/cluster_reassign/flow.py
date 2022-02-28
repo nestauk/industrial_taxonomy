@@ -9,7 +9,6 @@ from metaflow import (
     project,
     step,
     batch,
-    pip,
 )
 
 from utils import (
@@ -91,7 +90,6 @@ class ClusterReassignFlow(FlowSpec):
         python="3.8",
         libraries={
             "faiss-gpu": "1.7.2",
-            # "faiss": "1.7.2"
         },
     )
     @step
@@ -187,9 +185,6 @@ class ClusterReassignFlow(FlowSpec):
                 embedding_locs,
                 glass_embeddings,
             )
-            # nrows = 20_000 if self.test_mode and not current.is_production else None
-            # locs_rest = locs_rest[:nrows]
-            # embeddings_rest = embeddings_rest[:nrows]
 
             logger.info(f"Finding left over nearest neighbours for {param}")
             knn_rest = find_knn(
@@ -211,7 +206,6 @@ class ClusterReassignFlow(FlowSpec):
                 clusters,
                 min_sim_threshold=0.6,
             )
-            # self.assigned_rest[param] = assigned_rest
 
             output_rest = knn_output(
                 np.array(glass_org_ids)[locs_rest],
@@ -265,9 +259,6 @@ class ClusterReassignFlow(FlowSpec):
         for param, knn in self.knn.items():
             logger.info(f"Calculating entropy for companies in {param}")
             index_id_cluster_lookup = np.array(self.original_text_sector[param])
-            # index_id_cluster_lookup = np.array(
-            #     [c[0] for c in self.original_text_sector[param]]
-            # )
 
             knn_ids = np.array([k[0][1:] for k in knn])
             knn_cluster_labels = index_id_cluster_lookup[knn_ids]
@@ -275,13 +266,12 @@ class ClusterReassignFlow(FlowSpec):
             counts_before = cv.fit_transform(knn_cluster_labels).todense()
             entropy_before = [shannon(np.array(c)[0]) for c in counts_before]
             self.entropy_before[param] = list(
-                # zip([c[1] for c in self.clusters[param]], entropy_before)
+
                 zip(self.org_ids[param], entropy_before)
             )
 
             index_id_reassigned_lookup = np.array(
                 self.assigned_text_sector[param]
-                # self.reassigned[param]["assigned_text_sector"]
             )
             knn_reassigned_labels = index_id_reassigned_lookup[knn_ids]
 
@@ -289,7 +279,6 @@ class ClusterReassignFlow(FlowSpec):
             entropy_after = [shannon(np.array(c)[0]) for c in counts_after]
             self.entropy_after[param] = list(
                 zip(self.org_ids[param], entropy_after)
-                # zip([c[1] for c in self.clusters[param]], entropy_after)
             )
 
         self.next(self.end)
