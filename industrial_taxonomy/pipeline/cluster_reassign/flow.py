@@ -120,6 +120,8 @@ class ClusterReassignFlow(FlowSpec):
         self.assigned_text_sector = dict()
         self.original_text_sector = dict()
         self.knn_assigned_text_sectors = dict()
+        self.knn_text_sector_agg = dict()
+        self.knn_text_sector_agg_sims = dict()
 
         self.org_ids_rest = dict()
         self.knn_org_ids_rest = dict()
@@ -128,6 +130,8 @@ class ClusterReassignFlow(FlowSpec):
         self.assigned_text_sector_rest = dict()
         self.original_text_sector_rest = dict()
         self.knn_assigned_text_sectors_rest = dict()
+        self.knn_text_sector_agg_rest = dict()
+        self.knn_text_sector_agg_sims_rest = dict()
         for param, clusters in self.clusters.items():
             embeddings, embedding_locs = get_clusters_embeddings(
                 clusters,
@@ -153,7 +157,7 @@ class ClusterReassignFlow(FlowSpec):
                     f"clusters for {param}"
                 )
             )
-            reassigned = reassign_clustered(
+            reassigned, agg_clusters, agg_cluster_sims = reassign_clustered(
                 knn,
                 clusters,
                 min_sim_threshold=0.6,
@@ -161,7 +165,6 @@ class ClusterReassignFlow(FlowSpec):
                 epsilon=0.05,
             )
 
-            print(len(reassigned))
             output = knn_output(
                 np.array(glass_org_ids)[embedding_locs],
                 clusters,
@@ -176,15 +179,17 @@ class ClusterReassignFlow(FlowSpec):
             self.original_text_sector[param] = output["original_text_sector"]
             self.knn_assigned_text_sectors[param] = output["knn_assigned_text_sectors"]
             self.org_ids[param] = output["org_ids"]
+            self.knn_text_sector_agg[param] = agg_clusters
+            self.knn_text_sector_agg_sims[param] = agg_cluster_sims
 
             logger.info(f"Assigning left over companies for {param}")
             embeddings_rest, locs_rest = get_non_clusters_embeddings(
                 embedding_locs,
                 glass_embeddings,
             )
-            nrows = 20_000 if self.test_mode and not current.is_production else None
-            locs_rest = locs_rest[:nrows]
-            embeddings_rest = embeddings_rest[:nrows]
+            # nrows = 20_000 if self.test_mode and not current.is_production else None
+            # locs_rest = locs_rest[:nrows]
+            # embeddings_rest = embeddings_rest[:nrows]
 
             logger.info(f"Finding left over nearest neighbours for {param}")
             knn_rest = find_knn(
@@ -195,16 +200,25 @@ class ClusterReassignFlow(FlowSpec):
             )
 
             logger.info(f"Assigning left over companies for {param}")
-            assigned_rest = assign_non_clustered(
-                knn_rest, glass_org_ids, locs_rest, clusters, min_sim_threshold=0.6
+            (
+                assigned_rest,
+                agg_clusters_rest,
+                agg_cluster_sims_rest,
+            ) = assign_non_clustered(
+                knn_rest,
+                glass_org_ids,
+                locs_rest,
+                clusters,
+                min_sim_threshold=0.6,
             )
             # self.assigned_rest[param] = assigned_rest
 
             output_rest = knn_output(
                 np.array(glass_org_ids)[locs_rest],
                 clusters,
-                assigned_rest,
+                reassigned,
                 knn_rest,
+                assigned_rest,
                 rest=True,
             )
 
@@ -219,6 +233,8 @@ class ClusterReassignFlow(FlowSpec):
             self.assigned_text_sector_rest[param] = output_rest["assigned_text_sector"]
             self.original_text_sector_rest[param] = output_rest["original_text_sector"]
             self.org_ids_rest[param] = output_rest["org_ids"]
+            self.knn_text_sector_agg_rest[param] = agg_clusters_rest
+            self.knn_text_sector_agg_sims_rest[param] = agg_cluster_sims_rest
 
             self.knn[param] = knn
 

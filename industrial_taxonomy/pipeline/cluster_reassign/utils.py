@@ -216,6 +216,8 @@ def reassign_clustered(
 
         changed = 0
         _clusters = []
+        agg_clusters = []
+        agg_cluster_sims = []
         for org_id, (knn_ids, sims) in zip(org_ids, knn):
             knn_ids, sims, source_id = decompose_knn(
                 knn_ids,
@@ -240,11 +242,14 @@ def reassign_clustered(
                 else:
                     _clusters.append((original_cluster, org_id))
 
+            agg_clusters.append(unique_clusters)
+            agg_cluster_sims.append(agg_sims)
+
         clusters = _clusters
         complete += 1
         shift = changed / len(knn)
 
-    return clusters
+    return clusters, np.array(agg_clusters), np.array(agg_cluster_sims)
 
 
 def assign_non_clustered(
@@ -274,6 +279,8 @@ def assign_non_clustered(
     org_ids = np.array(org_ids)[locs]
     index_id_cluster_lookup = np.array([c[0] for c in clusters])
 
+    agg_clusters = []
+    agg_cluster_sims = []
     clusters_assigned = []
     for org_id, (knn_ids, sims) in zip(org_ids, knn):
         knn_ids, sims = decompose_knn(
@@ -295,14 +302,18 @@ def assign_non_clustered(
         else:
             clusters_assigned.append((None, org_id))
 
-    return clusters_assigned
+        agg_clusters.append(unique_clusters)
+        agg_cluster_sims.append(agg_sims)
+
+    return clusters_assigned, agg_clusters, agg_cluster_sims
 
 
 def knn_output(
-    org_ids: List[int],
+    org_ids: npt.NDArray,
     original_clusters: List[Tuple[str, int]],
-    assigned: List[Tuple[str, int]],
+    reassigned: List[Tuple[str, int]],
     knn: List[Tuple[npt.NDArray, npt.NDArray]],
+    assigned_rest: List[Tuple[str, int]] = None,
     rest: bool = False,
 ) -> Dict[str, List]:
     """Creates a dictionary containing results of nearest neighbour text
@@ -323,9 +334,13 @@ def knn_output(
 
     index_id_ts_lookup = np.array([c[0] for c in original_clusters])
     index_id_org_id_lookup = np.array([c[1] for c in original_clusters])
-    assigned_ts_lookup = np.array(c[1] for c in assigned)
+    assigned_ts_lookup = np.array([c[0] for c in reassigned])
 
     output = defaultdict(list)
+    # output["knn_org_ids"] = []
+    # output["knn_original_text_sectors"] = []
+    # output["knn_sims"] = []
+    # output["knn_assigned_text_sectors"] = []
 
     for knn_ids, sims in knn:
         if rest:
@@ -337,13 +352,15 @@ def knn_output(
         output["knn_original_text_sectors"].append(list(index_id_ts_lookup[knn_ids]))
         output["knn_sims"].append(sims)
         output["knn_assigned_text_sectors"].append(assigned_ts_lookup[knn_ids])
+        output["knn_assigned_text_sectors"].append(assigned_ts_lookup[knn_ids])
 
-    output["org_id"] = org_ids
-    output["assigned_text_sector"] = [a[0] for a in assigned]
+    output["org_ids"] = org_ids
 
     if rest:
         output["original_text_sector"] = [None for _ in org_ids]
+        output["assigned_text_sector"] = [a[0] for a in assigned_rest]
     else:
         output["original_text_sector"] = list(index_id_ts_lookup)
+        output["assigned_text_sector"] = [a[0] for a in reassigned]
 
     return output

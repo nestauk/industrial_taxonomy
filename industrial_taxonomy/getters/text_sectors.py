@@ -57,11 +57,13 @@ def reassigned_text_sectors(
         attributes = {
             "org_ids": run.data.org_ids,
             "original_text_sector": run.data.original_text_sector,
-            # "assigned_text_sector": run.data.assigned_text_sector,
-            # "knn_org_ids": run.data.knn_org_ids,
-            # "knn_original_text_sectors": run.data.knn_original_text_sectors,
-            # "knn_assigned_text_sectors": run.data.knn_assigned_text_sectors,
-            # "knn_sims": run.data.knn_sims,
+            "assigned_text_sector": run.data.assigned_text_sector,
+            "knn_org_ids": run.data.knn_org_ids,
+            "knn_original_text_sectors": run.data.knn_original_text_sectors,
+            "knn_assigned_text_sectors": run.data.knn_assigned_text_sectors,
+            "knn_sims": run.data.knn_sims,
+            "knn_text_sector_agg": run.data.knn_text_sector_agg,
+            "knn_text_sector_agg_sims": run.data.knn_text_sector_agg_sims,
         }
     else:
         attributes = {
@@ -72,6 +74,8 @@ def reassigned_text_sectors(
             "knn_original_text_sectors": run.data.knn_original_text_sectors_rest,
             "knn_sims": run.data.knn_sims_rest,
             "knn_assigned_text_sectors": run.data.knn_assigned_text_sectors_rest,
+            "knn_text_sector_agg": run.data.knn_text_sector_agg_rest,
+            "knn_text_sector_agg_sims": run.data.knn_text_sector_agg_sims_rest,
         }
     output = defaultdict(dict)
     for attr_key, param_vals in attributes.items():
