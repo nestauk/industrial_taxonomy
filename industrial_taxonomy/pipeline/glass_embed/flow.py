@@ -8,18 +8,18 @@ try:  # Hack for type-hints on attributes
 except ImportError:
     pass
 
-MODEL_NAME = "sentence-transformers/paraphrase-distilroberta-base-v2"
+MODEL_NAME = "sentence-transformers/multi-qa-mpnet-base-dot-v1"
 
 
 @project(name="industrial_taxonomy")
 class GlassEmbed(FlowSpec):
     """Transform descriptions of fuzzy matched companies into embeddings.
 
-    This uses the all-distilroberta-v1 transformer model which encodes up
+    This uses the multi-qa-mpnet-base-dot-v1 transformer model which encodes up
     to 512 tokens per document and produces embeddings with 768 dimensions.
-    It was chosen as a compromise between speed/size and performance
-    according to this comparison chart produced by its creators:
-    https://huggingface.co/sentence-transformers/all-distilroberta-v1
+    It is recommended by SBERT due to its performance when benchmarked against
+    other transformers for semantic search:
+    https://www.sbert.net/docs/pretrained_models.html
 
     The model produces normalised embeddings of length 1, meaning that the dot
     and cosine products are equivalent.
@@ -71,7 +71,7 @@ class GlassEmbed(FlowSpec):
         image="metaflow-pytorch",
         # Queue gives p3.2xlarge, with:
         gpu=1,
-        memory=61000,
+        memory=60000,
         cpu=8,
     )
     @pip(libraries={"sentence-transformers": "2.1.0"})
