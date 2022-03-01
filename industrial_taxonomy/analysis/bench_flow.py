@@ -1,7 +1,6 @@
 from typing import Dict, List
 from metaflow import FlowSpec, project, step, current, Parameter
 import pandas as pd
-import logging
 
 
 @project(name="industrial_taxonomy")
