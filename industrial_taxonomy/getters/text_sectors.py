@@ -32,6 +32,13 @@ def text_sectors(
     run = run or get_run("ClusterGlass")
     return run.data.clusters
 
+def text_sector_names_reassigned(
+    run: Optional[Run] = None,
+) -> Dict[clustering_param, Dict[sector_id, str]]:
+    """Gets text sector names."""
+    run = run or get_run("TextSectorName")
+    return run.data.sector_names
+
 
 def topsbm_models(run: Optional[Run] = None) -> Dict[sector_id, sbmtm]:
     """Gets topic models trained on each sector"""
