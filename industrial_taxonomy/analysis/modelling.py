@@ -4,6 +4,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.base import BaseEstimator
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, make_scorer, r2_score
+from industrial_taxonomy.utils.metaflow import get_run
 
 
 def local_predictive(
@@ -84,3 +85,9 @@ def modelling_results(
         .assign(share=assign_share)
         .assign(model=modelling_approach)
     )
+
+
+def modelling_outputs():
+    """Get modelling results"""
+
+    return get_run("LocalBenchmark").data.results_table
