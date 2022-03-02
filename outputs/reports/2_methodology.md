@@ -25,8 +25,8 @@ This taxonomy presented some important limitations:
 
 We have sought to address the issues above by implementing the following changes in the pipeline.
 
-1. We have lowered the threshold for inclusion into the pipeline to 1,000 companies, increasing our coverage to 106 SIC codes.
-2. We have performed the text clustering with different parameters for inclusion of companies into text sectors. Lower values for this parameter mean that fewer companies - those that are most representative - are assigned to a cluster, potentially reducing noise in the seed text clusters that are used in the reassignment procedure in Step 4. At the same time, this means that the representation of text sectors in step 3 is based on smaller datasets, which migth make them noisier. We have implemented a "consequential evaluation" procedure based on the correlation between taxonomy outputs and secondary data to select our preferred assignment strategy (see Section 3 for the results).
+1. We have lowered the SIC threshold for inclusion into the pipeline to 1,000 companies, increasing our coverage to 106 4-digit SIC codes.
+2. We have performed the text clustering with different parameters regulating the inclusion of companies into text sectors. Lower values for this parameter mean that fewer companies - those that are most representative - are assigned to a cluster, potentially reducing noise in the seed text clusters that are used in the reassignment procedure in Step 4. At the same time, this means that the representation of text sectors in step 3 is based on fewer observations (for example, 10 vs. more than 1000), which might make them less stable. Since it is unclear, ex-ante, which strategy will perform better, we have implemented a "consequential evaluation" procedure based on the empirical correlation between taxonomy outputs and secondary data to select our an assignment strategy for downstream analysis (see Section 3 for the results).
 3. ...
 ## Outstanding issues
 
