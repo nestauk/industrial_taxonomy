@@ -33,6 +33,14 @@ def text_sectors(
     return run.data.clusters
 
 
+def text_sector_names_reassigned(
+    run: Optional[Run] = None,
+) -> Dict[clustering_param, Dict[sector_id, str]]:
+    """Gets text sector names."""
+    run = run or get_run("TextSectorName")
+    return run.data.sector_names
+
+
 def topsbm_models(run: Optional[Run] = None) -> Dict[sector_id, sbmtm]:
     """Gets topic models trained on each sector"""
     run = run or get_run("ClusterGlass")
@@ -110,7 +118,7 @@ def knn_assigned_text_sectors(
     if clustered:
         return run.data.knn_assigned_text_sectors
     else:
-        return run.data.knn_assigned_text_sectors_rest 
+        return run.data.knn_assigned_text_sectors_rest
 
 
 def knn_sims(
@@ -122,7 +130,7 @@ def knn_sims(
     if clustered:
         return run.data.knn_sims
     else:
-        return run.data.knn_sims_rest 
+        return run.data.knn_sims_rest
 
 
 def knn_text_sector_agg(
