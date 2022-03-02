@@ -9,6 +9,25 @@ def split_dict(d, params):
     return list(d.keys()), list(d.values())
 
 
+def get_locs(ids, vector_index):
+    """Gets the locations of some elements as they appear in an index."""
+    id_to_loc = dict(zip(vector_index, range(len(vector_index))))
+    locs = np.array(itemgetter(*ids)(id_to_loc))
+    return locs
+
+
+def sic4_lookups(text_sector_embedding_lookup):
+    """Generates a lookup between SIC4 codes, text sectors and Glass
+    organisation IDs."""
+    sic4_embedding_lookup = defaultdict(list)
+    sic4_text_sector_lookup = defaultdict(list)
+    for label, org_ids in text_sector_embedding_lookup.items():
+        sic4_embedding_lookup[label[:4]].extend(org_ids)
+        sic4_text_sector_lookup[label[:4]].append(label)
+        
+    return sic4_embedding_lookup, sic4_text_sector_lookup
+
+
 def sector_org_ids_lookup(sectors):
     """Creates a lookup between text sector labels and the Glass organisation
     IDs for the companies in that text sector."""

@@ -22,6 +22,8 @@ from utils import (
     tfidf_vectors,
     top_tfidf_terms,
     central_ngrams,
+    sic4_lookups,
+    get_locs,
 )
 
 
@@ -102,52 +104,70 @@ class TextSectorName(FlowSpec):
         descriptions = embedded_org_descriptions()
 
         sector_org_ids_index = sector_org_ids_lookup(self.input)
+        sic4_org_id_lookup, sic4_text_sector_lookup = sic4_lookups(
+            sector_org_ids_index,
+        )
 
         self.sector_names = {}
 
-        for label, sector_org_ids in sector_org_ids_index.items():
-            if len(sector_org_ids) <= 1:
-                self.sector_names[label] = None
-                continue
+        for sic4, text_sectors in sic4_text_sector_lookup.items():
+            sic4_org_ids = sic4_org_id_lookup[sic4]
+            sic4_clusters = [(sic4, org_id) for org_id in sic4_org_ids]
 
-            sector_clusters = [(label, org_id) for org_id in sector_org_ids]
-            sector_embeddings, sector_locs = get_clusters_embeddings(
-                sector_clusters,
+            _, sic4_locs = get_clusters_embeddings(
+                sic4_clusters,
                 org_ids,
                 embeddings,
             )
-            sector_descriptions = [descriptions[i] for i in sector_locs]
+            sic4_descriptions = [descriptions[i] for i in sic4_locs]
 
-            if len(sector_descriptions) > 2:
-                min_df = 2
-            else:
-                min_df = 1
+            sic4_tfidf_vecs, tfidf_vectorizer = tfidf_vectors(
+                sic4_descriptions,
+                TfidfVectorizer,
+                min_df=2,
+                ngram_range=(2, 3),
+            )
 
-            try:
-                sector_tfidf_vecs, tfidf_vectorizer = tfidf_vectors(
-                    sector_descriptions,
-                    TfidfVectorizer,
-                    min_df=min_df,
+            for text_sector in text_sectors:
+                sector_org_ids = sector_org_ids_index[text_sector]
+                n_companies = len(sector_org_ids)
+
+                logger.info(f"Generating names for {text_sector}")
+                logger.info(f"Number of companies: {n_companies}")
+
+                if n_companies < 2:
+                    self.sector_names[text_sector] = None
+                    continue
+
+                sector_clusters = [(text_sector, org_id) for org_id in sector_org_ids]
+                sector_embeddings, _ = get_clusters_embeddings(
+                    sector_clusters,
+                    org_ids,
+                    embeddings,
                 )
-            # some text sectors contain too few terms to calculate tf-idf
-            except ValueError:
-                self.sector_names[label] = None
-                continue
+                tfidf_sector_locs = get_locs(sector_org_ids, sic4_org_ids)
 
-            sector_top_ngrams = top_tfidf_terms(
-                sector_tfidf_vecs,
-                tfidf_vectorizer,
-                topn=20,
-            )
+                sector_top_ngrams = top_tfidf_terms(
+                    sic4_tfidf_vecs[tfidf_sector_locs],
+                    tfidf_vectorizer,
+                    topn=20,
+                )
 
-            best_ngrams = central_ngrams(
-                sector_top_ngrams,
-                self.encoder,
-                sector_embeddings,
-                pairwise_distances,
-                topn=3,
-            )
-            self.sector_names[label] = ", ".join(best_ngrams)
+                logger.info(f"Found {len(sector_top_ngrams)} term candidates")
+                if len(sector_top_ngrams) < 2:
+                    self.sector_names[text_sector] = ", ".join(sector_top_ngrams)
+                    continue
+
+                name_length = 5
+                best_ngrams = central_ngrams(
+                    sector_top_ngrams,
+                    self.encoder,
+                    sector_embeddings,
+                    pairwise_distances,
+                    topn=name_length,
+                )
+
+                self.sector_names[text_sector] = ", ".join(best_ngrams)
 
         self.next(self.join)
 
@@ -155,7 +175,7 @@ class TextSectorName(FlowSpec):
     def join(self, inputs):
         """Joins names back into dict with clustering params."""
         sector_names = [input.sector_names for input in inputs]
-        self.merge_artifacts(inputs, exclude=["sector_names"])
+        self.merge_artifacts(inputs, exclude=["sector_names", "encoder"])
         self.sector_names = dict([(p, s) for p, s in zip(self.params, sector_names)])
 
         self.next(self.end)
