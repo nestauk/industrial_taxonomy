@@ -6,13 +6,51 @@
 
 ### Official data
 
-Run `python industrial_taxonomy/pipeline/sic/flow.py --production run` to create the SIC code - name lookups
+**SIC code - Name lookups**
 
-Run `python industrial_taxonomy/pipeline/official/population/flow.py --production run` to collect population data
+```bash
+python industrial_taxonomy/pipeline/sic/flow.py \
+--production \
+run
+```
 
-Run `python industrial_taxonomy/pipeline/official/gdp/flow.py --production run` to collect GDP data
+**Population data**
 
-Run `python industrial_taxonomy/pipeline/official/nomis/flow.py --production run` to collect Nomis data
+```bash
+python industrial_taxonomy/pipeline/sic/flow.py \
+--production \
+run
+```
+
+**GDP data**
+
+```bash
+python industrial_taxonomy/pipeline/official/population/flow.py \
+--production \
+run
+```
+
+**Nomis data**
+
+```bash
+python industrial_taxonomy/pipeline/official/nomis/flow.py \
+--production \
+run
+```
+
+**Other local benchmarking and plotting data**
+
+```bash
+python industrial_taxonomy/pipeline/official/local_benchmark/flow.py \
+--production \
+run
+```
+
+```bash
+python industrial_taxonomy/pipeline/official/geo/flow.py \
+--production \
+run
+```
 
 ## 2. Fuzzy-match Glass organisations to Companies House companies
 

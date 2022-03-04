@@ -2,9 +2,11 @@
 
 from functools import lru_cache
 
+import geopandas as gp
 from metaflow import Flow, Run
 from metaflow.exception import MetaflowNotFound
 from typing import Optional
+
 
 try:  # Hack for type-hints on attributes
     import pandas as pd
@@ -141,3 +143,46 @@ def nomis(run: Optional[Run] = None):
         run = get_run("NomisTables")
 
     return pd.DataFrame(run.data.nomis_dict).rename(columns=column_name_lookup)
+
+
+def local_benchmarking(run: Optional[Run] = None):
+    """Get local benchmarking data from the ONS levelling up dataset
+    and Nesta/BEIS local innovation dashboard
+
+    Arguments:
+        run: what run to get
+
+    Returns:
+        Columns:
+            la_code: local authority code. Some
+                missing values for BEIS areas coded
+                with older NUTS codes where we don't
+                have a lookup
+            period: year (sometimes it is between years
+                eg 2019-2020). The BEIS data generally
+                includes multiple period per indicator,
+                the ONS only includes one period
+            indicator: name of the indicator
+            source: whether it comes from ONS or Nesta / BEIS
+            value: value of the variable (look in the
+                raw data or schema for the unit)
+            zscore: value normalised by indicator/year
+    """
+
+    if run is None:
+        run = get_run("SecondaryIndicators")
+
+    return run.data.secondary_table
+
+
+def lad_boundaries(run: Optional[Run] = None) -> dict:
+    """Read a geojson boundary and parse as geopandas"""
+
+    if run is None:
+        run = get_run("FetchBound")
+
+    geojson = run.data.boundary
+
+    return gp.GeoDataFrame.from_features(
+        geojson["features"], crs=geojson["crs"]["properties"]["name"]
+    )
