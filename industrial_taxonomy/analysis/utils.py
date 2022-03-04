@@ -10,11 +10,14 @@ from itertools import combinations
 from community import community_louvain
 from metaflow import Run
 from sklearn.decomposition import PCA
+from sklearn.metrics import silhouette_score
 from umap import UMAP
 from industrial_taxonomy.getters.glass import get_address
 from industrial_taxonomy.getters.text_sectors import (
     org_ids_reassigned,
     assigned_text_sector,
+    original_text_sector,
+    knn_text_sector_agg_sims,
 )
 from industrial_taxonomy.utils.metaflow import get_run
 from industrial_taxonomy.getters.sic import level_lookup
@@ -126,6 +129,65 @@ def text_sectors(
         return run.data.clusters
 
 
+def fetch_combine(getter):
+    """Gets and combines clustered / non clustered outputs"""
+
+    return combine_reassgn_outputs([getter(clustered=True), getter(clustered=False)])
+
+
+def reassgn_analysis_df(assn="assigned_10"):
+    """Creates a dataframe that we can use for a variety of downstrea
+    analyses and validations"""
+
+    org_ids = fetch_combine(org_ids_reassigned)[assn]
+    old_sectors = fetch_combine(original_text_sector)[assn]
+    new_sectors = fetch_combine(assigned_text_sector)[assn]
+    max_sims = [max(sim) for sim in fetch_combine(knn_text_sector_agg_sims)[assn]]
+    mean_sims = [np.mean(sim) for sim in fetch_combine(knn_text_sector_agg_sims)[assn]]
+
+    return (
+        pd.DataFrame(
+            {
+                name: data
+                for data, name in zip(
+                    [org_ids, old_sectors, new_sectors, max_sims, mean_sims],
+                    ["org_id", "source_sector", "end_sector", "max_sim", "mean_sim"],
+                )
+            }
+        )
+        .assign(sic4_source=lambda df: df["source_sector"].str.split("_").str[0])
+        .assign(sic4_target=lambda df: df["end_sector"].str.split("_").str[0])
+        .replace({None: np.nan})
+    )
+
+
+def check_companies(reassign_df, descr_lookup, sic4_lookup, n=10):
+    """Returns example companies to check outputs"""
+
+    selected = reassign_df.query("max_sim>0.6").sample(n)
+
+    for _id, row in selected.iterrows():
+
+        print(row["org_id"])
+        print(row["end_sector"])
+        print(row["text_name"])
+        try:
+            print(sic4_lookup[row["sic4_target"]])
+        except:
+            print("no SIC for this company")
+        print(row["max_sim"])
+        print(descr_lookup[str(row["org_id"])])
+        print("\n")
+
+
+def text_sector_names_reassigned(
+    run: Optional[Run] = None,
+) -> Dict:
+    """Gets text sector names."""
+    run = run or get_run("TextSectorName")
+    return run.data.sector_names
+
+
 def postcode_la_lookup() -> dict:
     """Return lookup between postcode and local authority
     #FIXUP: This should be a getter
@@ -211,6 +273,7 @@ def geo_distribution(
     sector_shares: str,
     glass_lads: pd.DataFrame,
     specialisation: bool = True,
+    binarise=False,
     drop_companies: set = None,
 ) -> pd.DataFrame:
     """Produces a geographical distribution of activity by sector
@@ -249,7 +312,7 @@ def geo_distribution(
             index=["laua_code", "laua_name"], columns="text_sector", values="count"
         )
         .fillna(0),
-        lambda df: create_lq(df) if specialisation is True else df,
+        lambda df: create_lq(df, binarise) if specialisation is True else df,
     )
 
 
@@ -264,7 +327,9 @@ def reduce_dim(
         text_geo,
         lambda df: pd.DataFrame(pca.fit_transform(text_geo), index=text_geo.index),
         lambda df: pd.DataFrame(
-            UMAP(n_components=n_components_umap).fit_transform(df), index=df.index
+            UMAP(n_components=n_components_umap).fit_transform(df),
+            index=df.index,
+            columns=["x", "y"],
         ),
     )
 
@@ -373,13 +438,21 @@ def extract_communities(
 def umap_plot(umap_df: pd.DataFrame):
     """Plots a umap projection of LAD data"""
 
+    no_labels = alt.Axis(labels=False, ticks=False)
+
     return (
         alt.Chart(umap_df)
         .mark_point(filled=True)
         .encode(
-            x=alt.X("x", scale=alt.Scale(zero=False)),
-            y=alt.Y("y", scale=alt.Scale(zero=False)),
-            color=alt.Color("la_cluster:N", scale=alt.Scale(scheme="tableau20")),
+            x=alt.X(
+                "x", scale=alt.Scale(zero=False), axis=no_labels, title="Dimension 1"
+            ),
+            y=alt.Y(
+                "y", scale=alt.Scale(zero=False), axis=no_labels, title="Dimension 2"
+            ),
+            color=alt.Color(
+                "la_cluster:N", scale=alt.Scale(scheme="tableau20"), title="LA cluster"
+            ),
             tooltip=["la_name", "la_cluster"],
         )
     )
@@ -404,34 +477,15 @@ def assign_lad_to_nuts1(code: str, lad_nuts_lookup: dict):
     """Assigns lad to NUTS including scotland, wales and NI"""
 
     return (
-        lad_nuts_lookup[code]
+        np.nan
+        if (code[0] == "E") & (code not in lad_nuts_lookup.keys())
+        else lad_nuts_lookup[code]
         if code[0] == "E"
         else "Scotland"
         if code[0] == "S"
         else "Wales"
         if code[0] == "W"
         else "Northern Ireland"
-    )
-
-
-def nuts_plot(lad_clusters: pd.DataFrame) -> alt.Chart:
-    """Plots the distribution of LADs by sector and NUTS"""
-
-    nuts_1_distr = (
-        lad_clusters.groupby("la_cluster")["nuts1"]
-        .value_counts(normalize=True)
-        .reset_index(name="share")
-    )
-
-    return (
-        alt.Chart(nuts_1_distr)
-        .mark_bar()
-        .encode(
-            y="la_cluster:N",
-            x="share",
-            color=alt.Color("nuts1", scale=alt.Scale(scheme="tableau20")),
-            tooltip=["la_cluster", "nuts1"],
-        )
     )
 
 
@@ -576,3 +630,69 @@ def make_sic4_specialisation(glass_la, sic4_lookup, specialisation: bool = True)
         ),
         lambda df: create_lq(df) if specialisation is True else df,
     )
+
+
+def make_secondary_silhouette(secondary, clusters):
+    """Calculates the silouhette score for secondary data
+    based on clusters
+    """
+
+    second_long = secondary.pivot_table(
+        index="la_code", columns="indicator", values="zscore"
+    ).dropna(axis=0)
+
+    second_w_clusters = second_long.assign(
+        cluster=lambda df: df.index.map(clusters)
+    ).dropna(axis=0)
+
+    return silhouette_score(
+        second_w_clusters[second_long.columns], second_w_clusters["cluster"]
+    )
+
+
+def extract_clusters(
+    assign: pd.DataFrame, pca: int, comm_resolution: float, clustering_options: dict
+):
+    """Function to extract cluster lookups and positions"""
+    geo_dim = reduce_dim(assign, n_components_pca=pca)
+    clustering, indices = build_cluster_graph(geo_dim, clustering_options)
+    lad_cluster_lookup = extract_communities(clustering, comm_resolution, indices)
+
+    umap_df = (
+        geo_dim.assign(la_cluster=lambda df: df.index.map(lad_cluster_lookup))
+        .assign(la_name=lambda df: df.index.map(lad_code_name_lookup()))
+        .reset_index(drop=False)
+    )
+
+    return umap_df, lad_cluster_lookup
+
+
+def silhouette_pipeline(
+    assign: pd.DataFrame,
+    pca: int,
+    comm_resolution: float,
+    secondary: list,
+    clustering_options,
+):
+    """Pipeline that calculates silouhette scores for clusters across different
+    datasets and parameter values
+    """
+
+    umap_df, cluster_lookup = extract_clusters(
+        assign, pca, comm_resolution, clustering_options
+    )
+
+    # Calculate silhouette scores
+    sil_scores = []
+
+    for sec in secondary:
+        sil = make_secondary_silhouette(sec, cluster_lookup)
+        sil_scores.append(sil)
+
+    return {
+        "pca": pca,
+        "comm_resolution": comm_resolution,
+        "num_clusters": len(set(cluster_lookup.values())),
+        "sil_ons": sil_scores[0],
+        "sil_beis": sil_scores[1],
+    }

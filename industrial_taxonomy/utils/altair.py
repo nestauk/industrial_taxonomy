@@ -58,9 +58,18 @@ def altair_text_resize(chart: Chart, sizes: tuple = (12, 14)) -> Chart:
     """
 
     ch = chart.configure_axis(
-        labelFontSize=sizes[0], titleFontSize=sizes[1]
+        labelFontSize=sizes[0], titleFontSize=sizes[1], labelLimit=300
     ).configure_legend(labelFontSize=sizes[0], titleFontSize=sizes[1])
     return ch
+
+
+def make_save_path(path: str):
+    """Make save paths in case we are not using
+    the standard one
+    """
+
+    os.makedirs(f"{path}/png", exist_ok=True)
+    os.makedirs(f"{path}/html", exist_ok=True)
 
 
 def choro_plot(
