@@ -16,4 +16,3 @@ pyyaml
 requests-cache
 selenium
 requests
-WebDriver

@@ -9,6 +9,7 @@ import requests
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.webdriver import WebDriver
+from webdriver_manager.chrome import ChromeDriverManager
 import industrial_taxonomy
 
 LOOSE_UK_BOUNDS = {
@@ -31,7 +32,7 @@ def chrome_driver() -> WebDriver:
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-gpu")
     driver = webdriver.Chrome(
-        executable_path="/Users/imanmuse/miniconda3/chromedriver",
+        executable_path=ChromeDriverManager().install(),
         options=chrome_options,
     )
     driver.set_page_load_timeout(10)
@@ -42,7 +43,7 @@ def chrome_driver() -> WebDriver:
 def filter_nspl_data(data: pd.DataFrame) -> pd.DataFrame:
     """Filter out NSPL rows without location data."""
     keep_rows = (
-        data.laua_code.notna()
+        data.index.notna()
         & data.lat.between(*LOOSE_UK_BOUNDS["lat"])
         & data.long.between(*LOOSE_UK_BOUNDS["long"])
     )  # Null lat-longs are actually coded as (99,0)
@@ -78,20 +79,8 @@ def read_nspl_data(
         index_col="pcds",
     )
 
-    nspl_data = nspl_data.reset_index()
-    nspl_data.index = nspl_data["laua"]
-    nspl_data.rename(columns={"laua": "laua_code"}, inplace=True)
-    return nspl_data
-
-
-def nspl_joined(data1: pd.DataFrame, data2: pd.DataFrame) -> pd.DataFrame:
-
-    return pd.merge(data1, data2, how="left", on="laua")
-
-
-def resetting_index(data1: pd.DataFrame) -> pd.DataFrame:
-
-    return data1.set_index("pcds")
+    # Settiing index to laua to avoid pcds being lost on merge.
+    return nspl_data.reset_index().set_index("laua", drop=True)
 
 
 def read_laua_names(
@@ -106,10 +95,24 @@ def read_laua_names(
 
     code_column_name = data.columns[data.columns.str.contains("CD")][0]
 
-    data.rename(columns={"LAD20CD": "laua", "LAD20NM": "laua_name"}, inplace=True)
-    data = data.set_index("laua")
-
     return data
+
+
+def nspl_joined(
+    nspl_data_df: pd.DataFrame, laua_names_df: pd.DataFrame
+) -> pd.DataFrame:
+    """joining nspl_names with nspl_data on corresponding laua_code"""
+
+    joined_df = pd.merge(
+        nspl_data_df, laua_names_df, how="left", left_on="laua", right_on="LAD20CD"
+    )
+
+    joined_df.rename(
+        columns={"LAD20CD": "laua_code", "LAD20NM": "laua_name"}, inplace=True
+    )
+
+    # setting pcds to index so pcds can later be set to keys when the joined_dataset is converted to dict.
+    return joined_df.set_index("pcds", drop=True)
 
 
 def get_nspl_csv_zip_path(zipfile: ZipFile) -> str:

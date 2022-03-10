@@ -15,7 +15,6 @@ GEOPORTAL_URL_PREFIX = "https://geoportal.statistics.gov.uk/datasets"
 postcode = str
 laua_name = str
 laua_code = str
-#
 
 
 @project(name="industrial_taxonomy")
@@ -25,7 +24,7 @@ class NsplLookup(FlowSpec):
     Excludes postcodes that do not have an assigned output area (OA),
     and therefore no Local Authority District coding.
     Postcodes in the Channel Islands and Isle of Man both have lat-longs of
-    `(99.999999, 0.000000)` and have pseudo Local Authorit district codes of
+    `(99.999999, 0.000000)` and have psuedo Local Authority district codes of
     "L99999999" and "M99999999" respectively, this does not match up with
     other datasets and therefore have been excluded.
     Attributes:
@@ -93,14 +92,13 @@ class NsplLookup(FlowSpec):
 
         if not current.is_production:
             requests_cache.install_cache("nspl_zip_cache")
+
         with download_zip(self.download_url) as zipfile:
 
             # Load main postcode lookup
             self.nspl_data = read_nspl_data(zipfile, nrows).pipe(filter_nspl_data)
-
             # LAUA lookup from codes to names
             self.laua_names = read_laua_names(zipfile)
-
             # joining nspl_names with nspl_data on corresponding laua_code
             self.nspl_linked = nspl_joined(self.nspl_data, self.laua_names)
 
@@ -127,8 +125,8 @@ class NsplLookup(FlowSpec):
             )
 
         # Check we have names for all laua codes
-        nspl_laua_cds = set(self.nspl_data.laua_code.dropna())
-        laua_names_cds = set(self.laua_names.index)
+        nspl_laua_cds = set(self.nspl_data.index.dropna())
+        laua_names_cds = set(self.laua_names.LAD20CD)
         laua_diff = nspl_laua_cds - laua_names_cds
         if len(laua_diff) > 0:
             raise AssertionError(f"LAUA do not match: {laua_diff}")
@@ -137,11 +135,11 @@ class NsplLookup(FlowSpec):
 
     @step
     def end(self):
+        """Setting index to pcds and converting dataframe to dict where keys are set to the current index. self.nspl_datframe printed as
+        {'AB1 0AA': {'laua_code': 'S12000033', 'lat': 57.101474, 'long': -2.242851, 'laua_name': 'Aberdeen City'},
+        'AB1 0AB': {'laua_code': 'S12000033', 'lat': 57.102554, 'long': -2.246308, 'laua_name': 'Aberdeen City'} ... for first two pcds"""
 
-        from utils import resetting_index
-
-        index_reset = resetting_index(self.nspl_linked)
-        self.nspl_dataframe = index_reset.to_dict(orient="index")
+        self.nspl_dataframe = self.nspl_linked.to_dict(orient="index")
 
 
 if __name__ == "__main__":
