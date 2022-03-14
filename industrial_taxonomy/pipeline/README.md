@@ -14,6 +14,8 @@ Run `python industrial_taxonomy/pipeline/official/gdp/flow.py --production run` 
 
 Run `python industrial_taxonomy/pipeline/official/nomis/flow.py --production run` to collect Nomis data
 
+Run `python industrial_taxonomy/pipeline/NSPL/flow.py --production run` to collect NSPL data
+
 ## 2. Fuzzy-match Glass organisations to Companies House companies
 
 ```bash
@@ -62,4 +64,12 @@ python industrial_taxonomy/pipeline/cluster_reassign/flow.py \
  --environment=conda \
  --no-pylint \
  run
+```
+
+## 7. Fetching and preprocessing NSPL
+
+```bash
+python industrial_taxonomy/pipeline/NSPL/flow.py \
+--datastore=s3 \
+--production  run \
 ```
